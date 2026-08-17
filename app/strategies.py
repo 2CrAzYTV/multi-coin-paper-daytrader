@@ -128,10 +128,11 @@ def signal_snapshot(
     pair: str,
     entry_frame: pd.DataFrame,
     trend_frame: pd.DataFrame,
-    settings: Settings,
+    settings: Settings | None = None,
 ) -> SignalSnapshot:
     if len(entry_frame) < 2 or trend_frame.empty:
         raise ValueError(f"I do not have enough candles for {pair}.")
+    settings = settings or Settings()
     prepared = add_signal_columns(entry_frame, trend_frame, settings)
     current = prepared.iloc[-1]
     required = (
