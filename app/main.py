@@ -46,7 +46,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 class BacktestRequest(BaseModel):
-    bars: int | None = Field(default=None, ge=100, le=1_000)
+    bars: int | None = Field(default=None, ge=100, le=5_000)
 
 
 @app.middleware("http")
