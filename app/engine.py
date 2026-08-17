@@ -73,7 +73,7 @@ class PaperEngine:
                         (equity / float(portfolio["starting_capital"]) - 1) * 100, 3
                     ),
                     "position_count": len(positions),
-                    "position": f"{len(positions)} offen" if positions else "Cash",
+                    "position": f"{len(positions)} open" if positions else "Cash",
                     "notional": round(notional, 2),
                     "open_risk": round(open_risk, 2),
                     "effective_leverage": round(notional / equity, 3) if equity > 0 else 0,
@@ -103,12 +103,12 @@ class PaperEngine:
 
     def run_once(self) -> dict[str, Any]:
         if not self._run_lock.acquire(blocking=False):
-            return {"status": "busy", "message": "Ein Paper-Lauf ist bereits aktiv."}
+            return {"status": "busy", "message": "I am already running a paper cycle."}
         try:
             constraints = self._load_constraints()
             packages, failures = self._load_market_packages(constraints)
             if not packages:
-                raise MarketDataError("Keines der konfigurierten Paare lieferte Marktdaten.")
+                raise MarketDataError("I received no market data for any configured pair.")
 
             new_pairs: set[str] = set()
             for pair, package in packages.items():
@@ -120,7 +120,7 @@ class PaperEngine:
             if not new_pairs:
                 return {
                     "status": "no_new_candles",
-                    "message": "Alle geschlossenen 15-Minuten-Kerzen wurden bereits verarbeitet.",
+                    "message": "I have already processed every closed 15-minute candle.",
                     "pairs": sorted(packages),
                     "failures": failures,
                 }
@@ -138,7 +138,7 @@ class PaperEngine:
             self.repository.add_event(
                 "info",
                 None,
-                f"{len(new_pairs)} neue Marktkerzen verarbeitet: {', '.join(sorted(new_pairs))}.",
+                f"{len(new_pairs)} new market candles processed: {', '.join(sorted(new_pairs))}.",
             )
             return {
                 "status": "ok",
@@ -170,10 +170,10 @@ class PaperEngine:
         failures: dict[str, str] = {}
         for pair in self.settings.pairs:
             if pair not in constraints:
-                failures[pair] = "Paar bei Bitpanda Fusion nicht aktiv"
+                failures[pair] = "Pair is not active on Bitpanda Fusion"
                 if pair not in self._notified_unavailable:
                     self.repository.add_event(
-                        "warning", None, f"{pair} wird uebersprungen: nicht aktiv."
+                        "warning", None, f"{pair} is skipped because it is not active."
                     )
                     self._notified_unavailable.add(pair)
                 continue
@@ -200,7 +200,7 @@ class PaperEngine:
             except Exception as exc:
                 failures[pair] = str(exc)
                 self.repository.add_event(
-                    "error", None, f"Marktdaten fuer {pair} fehlgeschlagen: {exc}"
+                    "error", None, f"I could not load market data for {pair}: {exc}"
                 )
         return packages, failures
 
@@ -232,9 +232,9 @@ class PaperEngine:
                     position,
                     prices[position["pair"]],
                     now,
-                    "Uebernacht-Notausstieg",
+                    "Overnight emergency exit",
                 )
-                events.append(f"{position['pair']} vor Tagesstart geschlossen")
+                events.append(f"{position['pair']} closed before the trading day")
 
         positions = self.repository.list_positions(spec.strategy_id)
         if portfolio.get("day_date") != today:
@@ -268,16 +268,16 @@ class PaperEngine:
                 reason = "Stop-Loss"
             elif direction > 0 and float(bar["High"]) >= float(position["take_profit"]):
                 exit_price = float(position["take_profit"])
-                reason = "Gewinnziel"
+                reason = "Profit target"
             elif direction < 0 and float(bar["Low"]) <= float(position["take_profit"]):
                 exit_price = float(position["take_profit"])
-                reason = "Gewinnziel"
+                reason = "Profit target"
             elif session_closed:
                 exit_price = float(bar["Close"])
-                reason = "Taeglicher Positionsschluss"
+                reason = "Daily position close"
             elif should_exit(direction, packages[pair]["entry"]):
                 exit_price = float(bar["Close"])
-                reason = "EMA-Ausstieg"
+                reason = "EMA exit"
 
             if exit_price is not None:
                 self._close_position(portfolio, position, exit_price, now, reason)
@@ -287,7 +287,10 @@ class PaperEngine:
             risk_per_unit = float(position["initial_risk"]) / max(
                 float(position["units"]), 1e-12
             )
-            favorable = direction * (float(bar["High"] if direction > 0 else bar["Low"]) - float(position["entry_price"]))
+            favorable = direction * (
+                float(bar["High"] if direction > 0 else bar["Low"])
+                - float(position["entry_price"])
+            )
             if favorable >= risk_per_unit * self.settings.trailing_trigger_r:
                 if direction > 0:
                     position["stop_price"] = max(
@@ -304,24 +307,24 @@ class PaperEngine:
         if daily_limit_breached(
             float(portfolio["day_start_equity"]), equity, self.settings.max_daily_loss
         ):
-            self._close_all(portfolio, positions, prices, now, "2-%-Tageslimit")
+            self._close_all(portfolio, positions, prices, now, "2% daily limit")
             portfolio["daily_locked"] = 1
-            events.append("Tageslimit aktiviert")
+            events.append("I activated the daily limit")
             self.repository.add_event(
-                "warning", spec.strategy_id, f"2-%-Tageslimit am {today} aktiviert."
+                "warning", spec.strategy_id, f"I activated the 2% daily limit on {today}."
             )
 
         positions = self.repository.list_positions(spec.strategy_id)
         equity = self.mark_equity(portfolio, positions, prices)
         portfolio["peak_equity"] = max(float(portfolio["peak_equity"]), equity)
         if drawdown(float(portfolio["peak_equity"]), equity) >= self.settings.hard_drawdown:
-            self._close_all(portfolio, positions, prices, now, "10-%-Not-Aus")
+            self._close_all(portfolio, positions, prices, now, "10% emergency stop")
             portfolio["hard_locked"] = 1
             portfolio["daily_locked"] = 1
-            portfolio["lock_reason"] = "Gesamtverlustgrenze von 10 % erreicht"
-            events.append("Not-Aus aktiviert")
+            portfolio["lock_reason"] = "I reached the 10% total drawdown limit"
+            events.append("I activated the emergency stop")
             self.repository.add_event(
-                "error", spec.strategy_id, "10-%-Not-Aus aktiviert; Reset erforderlich."
+                "error", spec.strategy_id, "I activated the 10% emergency stop and require a reset."
             )
 
         positions = self.repository.list_positions(spec.strategy_id)
@@ -359,7 +362,7 @@ class PaperEngine:
                     positions.append(opened)
                     portfolio["trades_today"] = int(portfolio["trades_today"]) + 1
                     events.append(
-                        f"{candidate.pair}: {'Long' if candidate.direction > 0 else 'Short'} eroeffnet"
+                        f"{candidate.pair}: {'Long' if candidate.direction > 0 else 'Short'} opened"
                     )
 
         positions = self.repository.list_positions(spec.strategy_id)
@@ -442,7 +445,7 @@ class PaperEngine:
             self.repository.add_event(
                 "info",
                 spec.strategy_id,
-                f"{candidate.pair} nicht eroeffnet: Positionswert unter Mindestbetrag.",
+                f"{candidate.pair} was not opened because its notional is below the minimum.",
             )
             return None
         direction = candidate.direction
@@ -491,7 +494,7 @@ class PaperEngine:
             spec.strategy_id,
             (
                 f"Paper-{position['side']} {candidate.pair}: {notional:.2f} EUR Nominal, "
-                f"modelliertes Risiko {initial_risk:.2f} EUR."
+                f"modelled risk {initial_risk:.2f} EUR."
             ),
         )
         return position

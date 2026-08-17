@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -21,119 +21,119 @@
     <main>
       <section class="hero">
         <div>
-          <p class="eyebrow">Fünf Märkte. Ein gemeinsames Risikobudget.</p>
-          <h1>Krypto-Daytrading.<br /><span>Ohne Echtgeld.</span></h1>
+          <p class="eyebrow">Five markets. One shared risk budget.</p>
+          <h1>Crypto day trading.<br /><span>Without real money.</span></h1>
           <p class="hero-copy">
-            Der Bot prüft liquide EUR-Paare auf 15-Minuten-Signale und vergleicht
-            Long-only, Long/Short sowie maximal 2× Hebel. Jede Ausführung bleibt simuliert.
+            I scan liquid EUR pairs for 15-minute signals and compare long-only,
+            long/short, and up to 2× leverage. I keep every execution simulated.
           </p>
         </div>
         <div class="hero-panel">
           <span class="pulse"></span>
-          <div><small>Status</small><strong id="systemStatus">Wird geladen …</strong></div>
-          <div><small>Prüfung</small><strong id="nextRun">–</strong></div>
-          <div><small>Datenquelle</small><strong id="dataSource">–</strong></div>
+          <div><small>Status</small><strong id="systemStatus">Loading …</strong></div>
+          <div><small>Scan interval</small><strong id="nextRun">–</strong></div>
+          <div><small>Data source</small><strong id="dataSource">–</strong></div>
         </div>
       </section>
 
-      <section class="risk-grid" aria-label="Risikogrenzen">
-        <article class="metric"><span>Virtuelles Kapital</span><strong id="capital">–</strong><small>je Vergleichsstrategie</small></article>
-        <article class="metric"><span>Risiko je Trade</span><strong id="tradeRisk">–</strong><small>portfolioweit berechnet</small></article>
-        <article class="metric"><span>Offenes Gesamtrisiko</span><strong id="aggregateRisk">–</strong><small>über alle Coins</small></article>
-        <article class="metric"><span>Tageslimit</span><strong id="dailyRisk">–</strong><small>über alle Trades</small></article>
-        <article class="metric"><span>Not-Aus</span><strong id="hardStop">–</strong><small>bis zum manuellen Reset</small></article>
+      <section class="risk-grid" aria-label="My risk limits">
+        <article class="metric"><span>Virtual capital</span><strong id="capital">–</strong><small>per comparison strategy</small></article>
+        <article class="metric"><span>Risk per trade</span><strong id="tradeRisk">–</strong><small>I calculate it portfolio-wide</small></article>
+        <article class="metric"><span>Aggregate open risk</span><strong id="aggregateRisk">–</strong><small>across every coin</small></article>
+        <article class="metric"><span>Daily limit</span><strong id="dailyRisk">–</strong><small>across every trade</small></article>
+        <article class="metric"><span>Emergency stop</span><strong id="hardStop">–</strong><small>until I reset manually</small></article>
       </section>
 
       <section class="control-panel panel">
         <div>
-          <p class="section-kicker">Marktuniversum</p>
-          <h2>Ausgewählte EUR-Paare</h2>
+          <p class="section-kicker">My market universe</p>
+          <h2>Selected EUR pairs</h2>
           <div id="pairChips" class="pair-chips"></div>
           <p id="sourceHint">–</p>
         </div>
         <div class="button-row">
-          <button class="button primary" id="runButton">Jetzt prüfen</button>
-          <button class="button secondary" id="backtestButton">Multi-Coin-Backtest</button>
+          <button class="button primary" id="runButton">Run scan now</button>
+          <button class="button secondary" id="backtestButton">Run multi-coin backtest</button>
         </div>
       </section>
 
       <section class="section-block">
         <div class="section-heading">
-          <div><p class="section-kicker">Scanner</p><h2>Letzte Marktsignale</h2></div>
-          <span class="muted">15 min · Trendfilter 1 h</span>
+          <div><p class="section-kicker">Scanner</p><h2>My latest market signals</h2></div>
+          <span class="muted">15 min · 1 h trend filter</span>
         </div>
         <div id="marketGrid" class="market-grid"></div>
       </section>
 
       <section class="section-block">
         <div class="section-heading">
-          <div><p class="section-kicker">Live-Simulation</p><h2>Paper-Portfolios</h2></div>
-          <span class="muted" id="lastUpdate">Noch kein Lauf</span>
+          <div><p class="section-kicker">Live simulation</p><h2>My paper portfolios</h2></div>
+          <span class="muted" id="lastUpdate">I have not run a scan yet</span>
         </div>
         <div id="portfolioGrid" class="portfolio-grid"></div>
       </section>
 
       <section class="panel positions-panel">
-        <div class="section-heading compact"><div><p class="section-kicker">Exposition</p><h2>Offene Paper-Positionen</h2></div></div>
+        <div class="section-heading compact"><div><p class="section-kicker">Exposure</p><h2>My open paper positions</h2></div></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Strategie</th><th>Paar</th><th>Seite</th><th>Nominal</th><th>Stop</th><th>Ziel</th><th>Offen</th></tr></thead>
-            <tbody id="positionRows"><tr><td colspan="7" class="muted">Keine Position geöffnet.</td></tr></tbody>
+            <thead><tr><th>Strategy</th><th>Pair</th><th>Side</th><th>Notional</th><th>Stop</th><th>Target</th><th>Open P&amp;L</th></tr></thead>
+            <tbody id="positionRows"><tr><td colspan="7" class="muted">I have no open position.</td></tr></tbody>
           </table>
         </div>
       </section>
 
       <section class="panel chart-panel">
         <div class="section-heading">
-          <div><p class="section-kicker">Entwicklung</p><h2 id="chartTitle">Paper-Kontostände</h2></div>
+          <div><p class="section-kicker">Performance</p><h2 id="chartTitle">My paper equity</h2></div>
           <div id="chartLegend" class="legend"></div>
         </div>
-        <div id="chartEmpty" class="empty-state">Starte den ersten Paper-Lauf oder Backtest.</div>
-        <svg id="equityChart" viewBox="0 0 1000 320" role="img" aria-label="Entwicklung der simulierten Kontostände"></svg>
+        <div id="chartEmpty" class="empty-state">I start with a paper scan or backtest.</div>
+        <svg id="equityChart" viewBox="0 0 1000 320" role="img" aria-label="My simulated equity history"></svg>
       </section>
 
       <section class="section-block" id="backtestSection" hidden>
         <div class="section-heading">
-          <div><p class="section-kicker">Historische Simulation</p><h2>Multi-Coin-Backtest</h2></div>
+          <div><p class="section-kicker">Historical simulation</p><h2>My multi-coin backtest</h2></div>
           <span class="muted" id="backtestPeriod"></span>
         </div>
         <div id="backtestGrid" class="backtest-grid"></div>
         <p class="disclaimer">
-          Ein Backtest ist kein Renditeversprechen. Die relativ kurze Intraday-Historie,
-          Gebührenannahmen, Ausführung und künftige Marktbedingungen können deutlich abweichen.
+          I do not treat a backtest as a return promise. Short intraday history,
+          assumed fees, execution, and future market conditions can differ substantially.
         </p>
       </section>
 
       <section class="split-grid">
         <section class="panel">
-          <div class="section-heading compact"><div><p class="section-kicker">Journal</p><h2>Letzte Trades</h2></div></div>
+          <div class="section-heading compact"><div><p class="section-kicker">Journal</p><h2>My latest trades</h2></div></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Strategie</th><th>Paar</th><th>Seite</th><th>Ergebnis</th><th>Status</th></tr></thead>
-              <tbody id="tradeRows"><tr><td colspan="5" class="muted">Noch keine Trades.</td></tr></tbody>
+              <thead><tr><th>Strategy</th><th>Pair</th><th>Side</th><th>Result</th><th>Status</th></tr></thead>
+              <tbody id="tradeRows"><tr><td colspan="5" class="muted">I have no trades yet.</td></tr></tbody>
             </table>
           </div>
         </section>
 
         <section class="panel">
-          <div class="section-heading compact"><div><p class="section-kicker">Sicherheitsmodell</p><h2>Globale Bremsen</h2></div></div>
+          <div class="section-heading compact"><div><p class="section-kicker">My safety model</p><h2>Portfolio-wide brakes</h2></div></div>
           <ul class="guard-list">
-            <li>Maximal <strong id="maxPositions">–</strong> Positionen gleichzeitig</li>
-            <li>Maximal <strong id="maxTrades">–</strong> neue Trades pro Tag</li>
-            <li>Alle Positionen werden täglich geschlossen</li>
-            <li>Kein Order-, Konto- oder Transfer-Endpunkt im Programm</li>
+            <li>I allow at most <strong id="maxPositions">–</strong> simultaneous positions</li>
+            <li>I allow at most <strong id="maxTrades">–</strong> new trades per day</li>
+            <li>I close every open position each day</li>
+            <li>I include no order, account, or transfer endpoint</li>
           </ul>
         </section>
       </section>
 
       <section class="panel events-panel">
-        <div class="section-heading compact"><div><p class="section-kicker">System</p><h2>Ereignisse</h2></div></div>
-        <div id="eventList" class="event-list"><p class="muted">Noch keine Ereignisse.</p></div>
+        <div class="section-heading compact"><div><p class="section-kicker">System</p><h2>My event log</h2></div></div>
+        <div id="eventList" class="event-list"><p class="muted">I have no events yet.</p></div>
       </section>
 
       <section class="danger-zone">
-        <div><strong>Paper-Konten zurücksetzen</strong><p>Löscht ausschließlich lokale Simulationen und startet wieder bei 1.000 €.</p></div>
-        <button id="resetButton" class="button danger">Paper-Daten löschen</button>
+        <div><strong>Reset my paper accounts</strong><p>I delete only local simulations and start again with €1,000.</p></div>
+        <button id="resetButton" class="button danger">Delete paper data</button>
       </section>
     </main>
 

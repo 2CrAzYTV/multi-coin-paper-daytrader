@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Container version="2">
+  <Name>Multi-Coin Paper Daytrader</Name>
+  <Repository>ghcr.io/2crazytv/multi-coin-paper-daytrader:latest</Repository>
+  <Registry>https://ghcr.io/2crazytv/multi-coin-paper-daytrader</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/2CrAzYTV/multi-coin-paper-daytrader/issues</Support>
+  <Project>https://github.com/2CrAzYTV/multi-coin-paper-daytrader</Project>
+  <Overview>I built this paper-only multi-coin day-trading simulator with a shared risk budget, deterministic demo data, and optional read-only Bitpanda Fusion market data. I expose no login, so I use the dashboard only inside a trusted LAN.</Overview>
+  <Category>Tools: Other:</Category>
+  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.svg</Icon>
+  <ExtraParams>--user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --restart=unless-stopped --stop-timeout=20</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>I create /mnt/user/appdata/paper-trading-bot/data before startup and assign it to nobody:users (99:100). I follow docs/UNRAID.md for the complete installation.</Requires>
+  <Config Name="WebUI Port" Target="8787" Default="8787" Mode="tcp" Description="I expose my local dashboard on this port." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
+  <Config Name="Persistent Data" Target="/data" Default="/mnt/user/appdata/paper-trading-bot/data" Mode="rw" Description="I store SQLite data and cache here and make it writable by UID/GID 99:100." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/paper-trading-bot/data</Config>
+  <Config Name="Paper Only" Target="PAPER_ONLY" Default="true" Mode="" Description="I keep this true; the application refuses to start when it is false." Type="Variable" Display="advanced" Required="true" Mask="false">true</Config>
+  <Config Name="Data Source" Target="DATA_SOURCE" Default="demo" Mode="" Description="I select either demo or fusion." Type="Variable" Display="always" Required="true" Mask="false">demo</Config>
+  <Config Name="Fusion Read API Key" Target="FUSION_READ_API_KEY" Default="" Mode="" Description="I optionally provide a key with Read permission only." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="App Timezone" Target="APP_TIMEZONE" Default="Europe/Berlin" Mode="" Description="I use this timezone for daily limits and the session close." Type="Variable" Display="always" Required="true" Mask="false">Europe/Berlin</Config>
+  <Config Name="Container Timezone" Target="TZ" Default="Europe/Berlin" Mode="" Description="I use this timezone for the container and logs." Type="Variable" Display="advanced" Required="true" Mask="false">Europe/Berlin</Config>
+  <Config Name="Pairs" Target="PAIRS" Default="BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR" Mode="" Description="I provide up to 10 comma-separated EUR pairs." Type="Variable" Display="always" Required="true" Mask="false">BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR</Config>
+  <Config Name="Starting Capital" Target="STARTING_CAPITAL" Default="1000" Mode="" Description="I assign this virtual starting capital to each comparison strategy." Type="Variable" Display="always" Required="true" Mask="false">1000</Config>
+  <Config Name="Risk Per Trade" Target="RISK_PER_TRADE" Default="0.005" Mode="" Description="I model this risk per trade and cap it at 0.01." Type="Variable" Display="advanced" Required="true" Mask="false">0.005</Config>
+  <Config Name="Aggregate Risk" Target="MAX_AGGREGATE_RISK" Default="0.01" Mode="" Description="I cap aggregate open risk at 0.02." Type="Variable" Display="advanced" Required="true" Mask="false">0.01</Config>
+  <Config Name="Daily Loss Limit" Target="MAX_DAILY_LOSS" Default="0.02" Mode="" Description="I cap the daily loss limit at 0.02." Type="Variable" Display="advanced" Required="true" Mask="false">0.02</Config>
+  <Config Name="Hard Drawdown" Target="HARD_DRAWDOWN" Default="0.10" Mode="" Description="I use this persistent paper emergency-stop threshold." Type="Variable" Display="advanced" Required="true" Mask="false">0.10</Config>
+  <Config Name="Maximum Open Positions" Target="MAX_OPEN_POSITIONS" Default="2" Mode="" Description="I allow 1 to 3 positions across the portfolio." Type="Variable" Display="advanced" Required="true" Mask="false">2</Config>
+  <Config Name="Maximum Trades Per Day" Target="MAX_TRADES_PER_DAY" Default="3" Mode="" Description="I allow 1 to 6 new trades across the portfolio each day." Type="Variable" Display="advanced" Required="true" Mask="false">3</Config>
+  <Config Name="Fee Rate" Target="FEE_RATE" Default="0.001" Mode="" Description="I apply this simulated fee rate." Type="Variable" Display="advanced" Required="true" Mask="false">0.001</Config>
+  <Config Name="Slippage Rate" Target="SLIPPAGE_RATE" Default="0.0005" Mode="" Description="I apply this simulated slippage rate." Type="Variable" Display="advanced" Required="true" Mask="false">0.0005</Config>
+  <Config Name="Candle Interval" Target="CANDLE_INTERVAL" Default="15m" Mode="" Description="I use this signal interval." Type="Variable" Display="advanced" Required="true" Mask="false">15m</Config>
+  <Config Name="Trend Interval" Target="TREND_INTERVAL" Default="1h" Mode="" Description="I use this trend-filter interval." Type="Variable" Display="advanced" Required="true" Mask="false">1h</Config>
+  <Config Name="Poll Seconds" Target="POLL_SECONDS" Default="60" Mode="" Description="I poll every 30 to 900 seconds." Type="Variable" Display="advanced" Required="true" Mask="false">60</Config>
+  <Config Name="Session Close Hour" Target="SESSION_CLOSE_HOUR" Default="23" Mode="" Description="I close paper positions at this local hour." Type="Variable" Display="advanced" Required="true" Mask="false">23</Config>
+  <Config Name="Session Close Minute" Target="SESSION_CLOSE_MINUTE" Default="45" Mode="" Description="I close paper positions at this local minute." Type="Variable" Display="advanced" Required="true" Mask="false">45</Config>
+  <Config Name="Data Directory" Target="DATA_DIR" Default="/data" Mode="" Description="I keep persistent application data at this internal path." Type="Variable" Display="advanced" Required="true" Mask="false">/data</Config>
+</Container>

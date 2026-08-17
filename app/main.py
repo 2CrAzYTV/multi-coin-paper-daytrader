@@ -77,7 +77,7 @@ async def health() -> dict:
 async def configuration() -> dict:
     public = settings.public_dict()
     public["paper_only_notice"] = (
-        "Diese Version enthaelt ausschliesslich GET-Marktdatenzugriffe und keine Funktion fuer Echtgeldorders."
+        "I expose read-only GET market-data access and no real-order function."
     )
     return public
 
@@ -102,7 +102,7 @@ async def run_paper_cycle() -> dict:
     except MarketDataError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
-        repository.add_event("error", None, f"Manueller Paper-Lauf fehlgeschlagen: {exc}")
+        repository.add_event("error", None, f"I could not complete the manual paper cycle: {exc}")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -119,9 +119,9 @@ async def run_backtest(request: BacktestRequest) -> dict:
 @app.post("/api/reset")
 async def reset_paper_accounts(confirm: str = Query(...)) -> dict:
     if confirm != "RESET":
-        raise HTTPException(status_code=400, detail="Zur Bestaetigung confirm=RESET senden.")
+        raise HTTPException(status_code=400, detail="I require confirm=RESET for this action.")
     repository.reset()
     return {
         "status": "ok",
-        "message": "Nur die lokalen Multi-Coin-Paper-Konten wurden zurueckgesetzt.",
+        "message": "I reset only the local multi-coin paper accounts.",
     }

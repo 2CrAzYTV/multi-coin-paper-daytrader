@@ -1,82 +1,105 @@
 # Multi-Coin Paper Daytrader – Unraid Edition
 
-Eine vollständig simulierte Daytrading-Umgebung für **1.000 € virtuelles
-Startkapital**. Sie überwacht standardmäßig fünf liquide EUR-Kryptomärkte und
-vergleicht drei Varianten unter denselben Marktbedingungen:
+[![CI and container image](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/actions/workflows/container-image.yml/badge.svg)](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/actions/workflows/container-image.yml)
 
-1. **Long-only, maximal 1× Exposition**
-2. **Long/Short, maximal 1× Exposition**
-3. **Long/Short, maximal 2× Exposition**
+I built this project as a fully simulated day-trading environment with
+**€1,000 of virtual starting capital**. I monitor five liquid EUR crypto
+markets by default and compare three approaches under the same market
+conditions:
 
-Standarduniversum: `BTC-EUR`, `ETH-EUR`, `SOL-EUR`, `XRP-EUR`, `ADA-EUR`.
-Die 1.000 € gelten je Vergleichsstrategie als **ein gemeinsames Portfolio**,
-nicht als zusätzliches Kapital pro Coin.
+1. **Long only, up to 1× exposure**
+2. **Long/short, up to 1× exposure**
+3. **Long/short, up to 2× exposure**
 
-## Sicherheitsstatus
+My default universe is `BTC-EUR`, `ETH-EUR`, `SOL-EUR`, `XRP-EUR`, and
+`ADA-EUR`. I treat the €1,000 in each comparison strategy as one shared
+portfolio, not as additional capital for every coin.
 
-Diese Version ist technisch **Paper-only**:
+## My safety contract
 
-- Es gibt im Programm keine Funktion zum Erstellen, Ändern, Stornieren oder
-  Bestätigen echter Orders.
-- Der Bitpanda-Client besitzt ausschließlich lesende `GET`-Marktdatenmethoden.
-- `PAPER_ONLY=false` verhindert den Programmstart.
-- Für echte Fusion-Daten genügt ein API-Key mit dem Scope **Read**. Die Scopes
-  **Trade** und **Transfer** dürfen nicht aktiviert werden.
-- Der Schlüssel bleibt nur in der lokalen `.env`, wird von Git ignoriert und
-  niemals über das Dashboard ausgegeben.
+I deliberately keep this project **paper only**:
 
-Bitpanda beschreibt die Berechtigungen in der offiziellen
-[Fusion-Key-Dokumentation](https://docs.fusion.bitpanda.com/api-key-generation-363384m0).
+- I do not include any function that creates, modifies, cancels, or confirms a
+  real order.
+- My Bitpanda client exposes read-only `GET` market-data operations.
+- I refuse to start when `PAPER_ONLY=false`.
+- If I enable live Fusion market data, I use an API key with **Read** permission
+  only. I never enable **Trade** or **Transfer**.
+- I keep the key in my local `.env`, exclude it from Git, and never return it
+  through the dashboard.
 
-## Portfolioweite Risikoregeln
+I follow Bitpanda's official
+[Fusion API key documentation](https://docs.fusion.bitpanda.com/api-key-generation-363384m0)
+when I create a read-only key.
 
-| Regel | Standard | Bedeutung bei 1.000 € |
+## Shared portfolio risk limits
+
+| Rule | Default | Effect with €1,000 |
 | --- | ---: | ---: |
-| Modelliertes Risiko je Trade | 0,5 % | höchstens ca. 5 € |
-| Gesamtrisiko aller offenen Trades | 1 % | höchstens ca. 10 € |
-| Tagesverlust-Limit | 2 % | höchstens ca. 20 € |
-| Gleichzeitige Positionen | 2 | über alle Coins zusammen |
-| Neue Trades pro Tag | 3 | über alle Coins zusammen |
-| Dauerhafter Not-Aus | 10 % Drawdown | schließen und bis Reset sperren |
-| Maximaler Hebel | 2× | nur in Vergleichsstrategie 3 |
+| Modelled risk per trade | 0.5% | approximately €5 maximum |
+| Aggregate open risk | 1% | approximately €10 maximum |
+| Daily loss limit | 2% | approximately €20 maximum |
+| Simultaneous positions | 2 | shared across all coins |
+| New trades per day | 3 | shared across all coins |
+| Persistent emergency stop | 10% drawdown | I close and lock until reset |
+| Maximum leverage | 2× | comparison strategy 3 only |
 
-Positionsgrößen berücksichtigen Stop-Abstand, Gebührenannahme und Slippage.
-Kurslücken können auch in realen Märkten zu höheren Verlusten führen. Diese
-Grenzen sind deshalb ein konservatives Modell und keine Verlustgarantie.
+I size positions from the stop distance and include assumed fees and slippage.
+Real markets can gap beyond a stop, so I treat these limits as a conservative
+simulation model rather than a loss guarantee.
 
-## Strategie
+## Strategy
 
-- Signalintervall: **15 Minuten**
-- Trendfilter: **1 Stunde**
-- Einstieg: frische EMA-9/EMA-21-Kreuzung in Richtung des 1-Stunden-Trends
-- Filter: RSI und relatives Kerzenvolumen
-- Stop: größerer Wert aus `1,5 × ATR(14)` und `0,6 %`
-- Gewinnziel: `2R`
-- Ab `1R` wird der Stop auf Einstand nachgezogen
-- Nach einem Ausstieg gilt pro Coin eine 45-minütige Abkühlzeit
-- Um 23:45 Uhr `Europe/Berlin` werden offene Positionen glattgestellt
+I use the following rules:
 
-Der Bot fragt die von Bitpanda als aktiv gemeldeten Paare ab und überspringt
-nicht verfügbare Märkte. Die Fusion-Dokumentation stellt dafür lesende
-[Paarlisten](https://docs.fusion.bitpanda.com/get-trading-pairs-4295528e0) und
-[OHLCV-Kerzen](https://docs.fusion.bitpanda.com/get-candles-4311313e0) bereit.
+- 15-minute signal interval
+- 1-hour trend filter
+- fresh EMA-9/EMA-21 crossover in the direction of the hourly trend
+- RSI and relative candle-volume filters
+- stop distance equal to the larger of `1.5 × ATR(14)` and `0.6%`
+- `2R` profit target
+- stop moved to break-even after `1R`
+- 45-minute per-pair cooldown after an exit
+- all open positions closed at 23:45 in `Europe/Berlin`
 
-## Warum noch keine Edelmetalle?
+I request the pairs that Bitpanda reports as active and skip unavailable
+markets. Fusion documents the read-only
+[pair list](https://docs.fusion.bitpanda.com/get-trading-pairs-4295528e0) and
+[OHLCV candle](https://docs.fusion.bitpanda.com/get-candles-4311313e0)
+endpoints I use.
 
-Gold und Silber sind als langfristige Diversifikation interessant, aber nicht
-für dasselbe 15-Minuten-Regelwerk. Bitpanda nennt derzeit Kauf-/Verkaufsaufschläge
-von zusammen etwa **1,5 % bei Gold** und **4,5 % bei Silber**. Das wäre im
-Verhältnis zum 2-%-Tageslimit zu teuer. Quelle:
-[Bitpanda Metals](https://support.bitpanda.com/hc/de/articles/360004208619-Was-ist-Bitpanda-Metals).
+## Why I do not include precious metals
 
-## Installation auf Unraid aus einem Git-Repository
+I consider gold and silver useful for long-term diversification, but I do not
+apply this 15-minute strategy to them. Bitpanda currently describes combined
+buying and selling premiums of approximately **1.5% for gold** and **4.5% for
+silver**. I consider those costs too high relative to my 2% daily loss limit.
+Source: [Bitpanda Metals](https://support.bitpanda.com/hc/en-us/articles/360004208619-What-is-Bitpanda-Metals).
 
-Nach dem Hochladen dieses Projekts ersetzt du `<REPOSITORY-URL>` durch die URL
-deines privaten oder öffentlichen Repositories:
+## My recommended Unraid installation
+
+I publish the ready-to-run image at:
+
+```text
+ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
+```
+
+I do not need Git or Docker Compose on Unraid. My complete guide covers the
+native **Add Container** form, the included Unraid XML template, hardened
+runtime options, persistent storage, health checks, updates, backups, rollback,
+and troubleshooting:
+
+➡️ **[How I install and operate the bot on Unraid](docs/UNRAID.md)**
+
+I open the dashboard at `http://UNRAID-IP:8787`. The dashboard has no login, so
+I expose it only inside a trusted LAN and never directly to the internet.
+
+## Source installation
+
+When I develop or build locally, I use Docker Compose:
 
 ```bash
-cd /mnt/user/appdata
-git clone <REPOSITORY-URL> paper-trading-bot
+git clone https://github.com/2CrAzYTV/multi-coin-paper-daytrader.git paper-trading-bot
 cd paper-trading-bot
 cp .env.example .env
 mkdir -p data
@@ -84,105 +107,103 @@ chown -R nobody:users data
 docker compose up -d --build
 ```
 
-Dashboard öffnen:
-
-```text
-http://UNRAID-IP:8787
-```
-
-Status prüfen:
+I then open `http://HOST-IP:8787` and inspect the service with:
 
 ```bash
 docker compose ps
 docker compose logs --tail=100 paper-trading-bot
 ```
 
-Der SQLite-Datenbestand liegt dauerhaft unter
-`./data/paper_trading.sqlite3`. Die lokale `.env` bleibt bei Updates erhalten.
+I keep the SQLite database at `./data/paper_trading.sqlite3`. My local `.env`
+and database remain outside version control.
 
-## Updates auf Unraid
+## Updates
 
-```bash
-cd /mnt/user/appdata/paper-trading-bot
-git pull --ff-only
-docker compose up -d --build
-docker image prune -f
-```
+After every successful push to `main`, my GitHub Actions workflow tests the
+project and publishes a new `:latest` image plus an immutable `sha-*` tag. This
+makes Unraid's image-update detection work.
 
-Vor einem größeren Update ist ein Backup sinnvoll:
+I update the running container from **Docker → Check for Updates →
+Update/Force Update**. Unraid pulls the new image and recreates the container
+from its saved template. The `/data` bind mount remains intact.
 
-```bash
-cp data/paper_trading.sqlite3 data/paper_trading.sqlite3.backup
-```
+I do not expect `docker restart` or `--restart=unless-stopped` to pull an image;
+they only restart the already installed image. I document backup and digest
+rollback in [docs/UNRAID.md](docs/UNRAID.md#updates-backup-and-rollback).
 
-## Zuerst im Demo-Modus starten
+## Demo and read-only Fusion data
 
-Die mitgelieferte `.env` verwendet `DATA_SOURCE=demo`. Damit startet der Bot
-sofort mit reproduzierbaren Offline-Daten. Für echte Bitpanda-Marktdaten:
+I start with `DATA_SOURCE=demo`, which produces deterministic offline data. To
+use current Bitpanda market data, I:
 
-1. In Bitpanda einen **Fusion API Key ausschließlich mit Read-Recht** anlegen.
-2. Lokal in `.env` ändern:
+1. create a Fusion API key with **Read** permission only;
+2. set these local values in `.env` or in the Unraid template:
 
    ```dotenv
    DATA_SOURCE=fusion
-   FUSION_READ_API_KEY=DEIN_LOKALER_READ_KEY
+   FUSION_READ_API_KEY=MY_LOCAL_READ_ONLY_KEY
    ```
 
-3. Container neu erstellen:
+3. recreate the container.
 
-   ```bash
-   docker compose up -d --build
-   ```
+I never commit, publish, or paste the key into a chat or issue.
 
-Den Schlüssel niemals committen, veröffentlichen oder im Chat teilen.
+## Dashboard controls
 
-## Bedienung
+- **Run scan now:** I retrieve the latest closed candle and never process the
+  same candle twice.
+- **Run multi-coin backtest:** I simulate all configured pairs with one shared
+  risk budget without changing the active paper portfolios.
+- **Reset paper data:** I delete only the local simulation state.
 
-- **Jetzt prüfen:** Holt die letzte geschlossene Kerze. Dieselbe Kerze wird
-  nicht doppelt verarbeitet.
-- **Multi-Coin-Backtest:** Simuliert alle Paare mit gemeinsamem Risikobudget;
-  er verändert die laufenden Paper-Konten nicht.
-- **Paper-Daten löschen:** Setzt ausschließlich die lokale Simulation zurück.
+I poll every 60 seconds by default, but I can trade at most once per newly
+closed 15-minute candle. A signal does not guarantee a trade. Quiet days with
+no trades are normal, and the global default allows no more than three new
+entries per day.
 
-Der Scheduler prüft standardmäßig alle 60 Sekunden, handelt aber höchstens bei
-einer **neuen geschlossenen 15-Minuten-Kerze**. Ein Signal führt nicht
-automatisch zu einem Trade. In ruhigen Phasen sind null Trades pro Tag normal;
-durch die globale Begrenzung sind maximal drei neue Einstiege pro Tag möglich.
+## Configuration
 
-## Konfiguration
+I keep all configurable values in `.env.example`. I also enforce these limits
+in code:
 
-Alle Einstellungen stehen in `.env`. Die wichtigsten Grenzen sind zusätzlich
-im Code hart begrenzt:
-
-- `RISK_PER_TRADE` maximal `0.01`
-- `MAX_AGGREGATE_RISK` maximal `0.02`
-- `MAX_DAILY_LOSS` maximal `0.02`
-- `MAX_OPEN_POSITIONS` maximal `3`
-- `MAX_TRADES_PER_DAY` maximal `6`
-- `PAPER_ONLY` muss `true` bleiben
+- `RISK_PER_TRADE` at most `0.01`
+- `MAX_AGGREGATE_RISK` at most `0.02`
+- `MAX_DAILY_LOSS` at most `0.02`
+- `MAX_OPEN_POSITIONS` at most `3`
+- `MAX_TRADES_PER_DAY` at most `6`
+- `PAPER_ONLY` must remain `true`
 
 ## Tests
 
+I run the same core checks locally and in CI:
+
 ```bash
 python -m unittest discover -s tests -v
-```
-
-Zusätzliche lokale Prüfungen:
-
-```bash
 python -m compileall -q app tests
 node --check app/static/app.js
+python -c "import xml.etree.ElementTree as ET; ET.parse('unraid/multi-coin-paper-daytrader.xml')"
 ```
 
-## Grenzen
+For pull requests, CI also builds the complete Docker image before I merge.
 
-- Das Projekt verspricht keine Rendite und ersetzt keinen Nebenjob planbar.
-- Ein Backtest kann durch Überanpassung und kurze Historie irreführend sein.
-- Gebühren sind konfigurierbare Annahmen und müssen regelmäßig mit dem eigenen
-  Bitpanda-Konditionsmodell verglichen werden.
-- Krypto-Assets sind stark korreliert; mehrere Coins bedeuten nicht automatisch
-  echte Diversifikation.
-- Steuern werden nicht berechnet.
-- Ein stabiler Paper-Test über mehrere Marktphasen ist Voraussetzung für jede
-  spätere Entscheidung. Echtgeldhandel ist bewusst nicht Bestandteil dieses
-  Repositories.
+## Limitations
+
+- I do not promise returns or reliable side income.
+- I know that short history and overfitting can make a backtest misleading.
+- I model fees and slippage; I do not reproduce every real execution detail.
+- I do not treat several correlated crypto assets as true diversification.
+- I do not calculate taxes.
+- I require extended paper testing before drawing conclusions. Real-money
+  trading is intentionally outside this repository.
+
+## Project policies
+
+I publish this project under the [MIT License](LICENSE). Before using or
+contributing, I recommend reading:
+
+- [Disclaimer](DISCLAIMER.md)
+- [Security policy](SECURITY.md)
+- [Support policy](SUPPORT.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Public visibility switch checklist](docs/RELEASE_CHECKLIST.md)

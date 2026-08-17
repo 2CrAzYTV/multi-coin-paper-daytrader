@@ -1,0 +1,37 @@
+name: Suggest an improvement
+description: I use this form for paper-simulation features and documentation improvements
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: I keep real orders, account access, trading, and transfers outside this project's scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Tell me which concrete problem the proposal should solve.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the expected behaviour, user experience, and benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and risk impact
+      description: Explain any effect on paper-only guarantees, privacy, or risk limits.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope confirmation
+      options:
+        - label: I confirm that this proposal requires no real order, account, trade, or transfer function.
+          required: true

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Multi-Coin Paper Daytrader</title>
+  <desc id="description">A dark rounded square with a mint MC monogram</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071918"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6ee7c1"/>
+      <stop offset="1" stop-color="#35c99a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#background)"/>
+  <circle cx="408" cy="104" r="52" fill="none" stroke="#6ee7c1" stroke-width="10" opacity=".35"/>
+  <path d="M102 358V154h48l56 97 56-97h48v204h-46V226l-58 96-58-96v132z" fill="url(#accent)"/>
+  <path d="M422 202c-17-22-39-33-67-33-57 0-91 42-91 94s34 94 91 94c30 0 54-12 71-36l-35-26c-9 13-20 20-35 20-27 0-44-21-44-52s17-52 44-52c14 0 25 6 34 18z" fill="#f8fafc"/>
+</svg>

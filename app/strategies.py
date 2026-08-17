@@ -64,7 +64,7 @@ def signal_snapshot(
     trend_frame: pd.DataFrame,
 ) -> SignalSnapshot:
     if len(entry_frame) < 2 or trend_frame.empty:
-        raise ValueError(f"Nicht genug Kerzen fuer {pair}.")
+        raise ValueError(f"I do not have enough candles for {pair}.")
     previous = entry_frame.iloc[-2]
     current = entry_frame.iloc[-1]
     trend_bar = trend_frame.iloc[-1]
@@ -77,7 +77,7 @@ def signal_snapshot(
         trend_bar["TREND_SLOW"],
     )
     if any(pd.isna(value) for value in required):
-        direction, trend, reason = 0, 0, "Indikatoren noch nicht bereit"
+        direction, trend, reason = 0, 0, "I do not have enough indicator data yet"
     else:
         cross_up = previous["EMA_FAST"] <= previous["EMA_SLOW"] and current[
             "EMA_FAST"
@@ -90,13 +90,13 @@ def signal_snapshot(
         volume_ok = volume_median <= 0 or float(current["Volume"]) >= volume_median * 0.8
         rsi = float(current["RSI"])
         if cross_up and trend > 0 and 45 <= rsi <= 70 and volume_ok:
-            direction, reason = 1, "Long-Setup"
+            direction, reason = 1, "Long setup"
         elif cross_down and trend < 0 and 30 <= rsi <= 55 and volume_ok:
-            direction, reason = -1, "Short-Setup"
+            direction, reason = -1, "Short setup"
         elif not volume_ok:
-            direction, reason = 0, "Volumenfilter"
+            direction, reason = 0, "Volume filter"
         else:
-            direction, reason = 0, "Kein frischer EMA-Kreuzungspunkt"
+            direction, reason = 0, "I found no fresh EMA crossover"
     atr = 0.0 if pd.isna(current.get("ATR")) else float(current["ATR"])
     ema_gap = abs(float(current["EMA_FAST"]) - float(current["EMA_SLOW"]))
     strength = ema_gap / atr if atr > 0 else 0.0

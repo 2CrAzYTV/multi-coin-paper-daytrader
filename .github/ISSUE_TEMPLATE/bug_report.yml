@@ -1,0 +1,59 @@
+name: Report a bug
+description: I use this form for reproducible technical defects
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. I ask you not to upload a .env, API key, registry token, or database. Please use my Security Policy for vulnerabilities.
+  - type: input
+    id: version
+    attributes:
+      label: Version or image digest
+      description: I can identify the build from a tag, commit SHA, or sha256 digest.
+      placeholder: sha256:…
+    validations:
+      required: true
+  - type: dropdown
+    id: data_source
+    attributes:
+      label: Data source
+      options:
+        - demo
+        - fusion (read only)
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Tell me what happened and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitised logs
+      description: Include only relevant lines after removing secrets and personal data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I have removed credentials and personal data from this report.
+          required: true
+        - label: I am running the container with PAPER_ONLY=true.
+          required: true

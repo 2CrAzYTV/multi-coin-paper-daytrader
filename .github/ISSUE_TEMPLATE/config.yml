@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security issue privately
+    url: https://github.com/2CrAzYTV/multi-coin-paper-daytrader/security/policy
+    about: I ask reporters not to place vulnerabilities, tokens, or API keys in a public issue.
+  - name: Read my installation and operations guide
+    url: https://github.com/2CrAzYTV/multi-coin-paper-daytrader/blob/main/docs/UNRAID.md
+    about: I document Unraid setup, updates, backups, rollback, and troubleshooting here.

@@ -1,7 +1,7 @@
 const state = { config: null, status: null, backtest: null };
 
-const euro = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
-const number = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
+const euro = new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR" });
+const number = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
@@ -19,7 +19,7 @@ function escapeHtml(value) {
 function formatTime(value) {
   if (!value) return "–";
   const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? escapeHtml(value) : date.toLocaleString("de-DE");
+  return Number.isNaN(date.valueOf()) ? escapeHtml(value) : date.toLocaleString("en-GB");
 }
 
 function toast(message, isError = false) {
@@ -47,15 +47,15 @@ function renderConfig() {
   document.getElementById("aggregateRisk").textContent = `${number.format(c.max_aggregate_risk * 100)} % · ${euro.format(c.aggregate_risk_amount)}`;
   document.getElementById("dailyRisk").textContent = `${number.format(c.max_daily_loss * 100)} % · ${euro.format(c.daily_loss_amount)}`;
   document.getElementById("hardStop").textContent = `${number.format(c.hard_drawdown * 100)} %`;
-  document.getElementById("dataSource").textContent = c.data_source === "demo" ? "Offline-Demo" : "Bitpanda Fusion";
-  document.getElementById("nextRun").textContent = `alle ${c.poll_seconds} Sekunden`;
-  document.getElementById("systemStatus").textContent = c.paper_only ? "Simulation aktiv" : "Sicherheitsfehler";
+  document.getElementById("dataSource").textContent = c.data_source === "demo" ? "Offline demo" : "Bitpanda Fusion";
+  document.getElementById("nextRun").textContent = `every ${c.poll_seconds} seconds`;
+  document.getElementById("systemStatus").textContent = c.paper_only ? "Simulation active" : "Safety error";
   document.getElementById("maxPositions").textContent = c.max_open_positions;
   document.getElementById("maxTrades").textContent = c.max_trades_per_day;
   document.getElementById("pairChips").innerHTML = c.pairs.map((pair) => `<span>${escapeHtml(pair)}</span>`).join("");
   document.getElementById("sourceHint").textContent = c.data_source === "demo"
-    ? "Sicherer Start mit reproduzierbaren Demodaten. Für Fusion später nur einen API-Schlüssel mit Read-Recht eintragen."
-    : "Fusion-Marktdaten aktiv; der API-Schlüssel wird nie an das Dashboard ausgegeben.";
+    ? "I start safely with reproducible demo data. For Fusion, I provide an API key with Read permission only."
+    : "I use Fusion market data and never expose the API key to the dashboard.";
 }
 
 function renderMarkets() {
@@ -63,9 +63,9 @@ function renderMarkets() {
   const byPair = Object.fromEntries(rows.map((item) => [item.pair, item]));
   document.getElementById("marketGrid").innerHTML = state.config.pairs.map((pair) => {
     const item = byPair[pair];
-    if (!item) return `<article class="market-card pending"><div><strong>${escapeHtml(pair)}</strong><span>wartet</span></div><p>Noch keine geschlossene Kerze verarbeitet.</p></article>`;
-    const signal = item.signal > 0 ? "Long-Setup" : item.signal < 0 ? "Short-Setup" : "Neutral";
-    const trend = item.trend > 0 ? "Aufwärtstrend" : item.trend < 0 ? "Abwärtstrend" : "Trend offen";
+    if (!item) return `<article class="market-card pending"><div><strong>${escapeHtml(pair)}</strong><span>waiting</span></div><p>I have not processed a closed candle yet.</p></article>`;
+    const signal = item.signal > 0 ? "Long setup" : item.signal < 0 ? "Short setup" : "Neutral";
+    const trend = item.trend > 0 ? "Uptrend" : item.trend < 0 ? "Downtrend" : "No confirmed trend";
     const signalClass = item.signal > 0 ? "positive" : item.signal < 0 ? "negative" : "muted";
     return `<article class="market-card">
       <div><strong>${escapeHtml(pair)}</strong><span class="${signalClass}">${signal}</span></div>
@@ -82,24 +82,24 @@ function renderPortfolios() {
     const resultClass = item.pnl >= 0 ? "positive" : "negative";
     const locked = Boolean(item.hard_locked);
     const dayLocked = Boolean(item.daily_locked);
-    const badge = locked ? "GESPERRT" : dayLocked ? "TAGESSTOPP" : item.position;
+    const badge = locked ? "LOCKED" : dayLocked ? "DAILY STOP" : item.position;
     return `<article class="portfolio-card" style="--accent:${escapeHtml(item.color)}">
       <div class="portfolio-top"><strong>${escapeHtml(item.label)}</strong><span class="position-tag">${escapeHtml(badge)}</span></div>
       <div class="portfolio-value">${euro.format(item.equity)}</div>
       <div class="portfolio-return ${resultClass}">${item.pnl >= 0 ? "+" : ""}${euro.format(item.pnl)} · ${number.format(item.return_pct)} %</div>
       <div class="portfolio-details">
-        <div><small>Offene Positionen</small><strong>${item.position_count}/${state.config.max_open_positions}</strong></div>
-        <div><small>Trades heute</small><strong>${item.trades_today}/${state.config.max_trades_per_day}</strong></div>
-        <div><small>Nominal</small><strong>${euro.format(item.notional)}</strong></div>
-        <div><small>Offenes Risiko</small><strong>${euro.format(item.open_risk)}</strong></div>
-        <div><small>Effektiver Hebel</small><strong>${number.format(item.effective_leverage)}×</strong></div>
-        <div><small>Letzter Lauf</small><strong>${formatTime(item.last_run_at)}</strong></div>
+        <div><small>Open positions</small><strong>${item.position_count}/${state.config.max_open_positions}</strong></div>
+        <div><small>Trades today</small><strong>${item.trades_today}/${state.config.max_trades_per_day}</strong></div>
+        <div><small>Notional</small><strong>${euro.format(item.notional)}</strong></div>
+        <div><small>Open risk</small><strong>${euro.format(item.open_risk)}</strong></div>
+        <div><small>Effective leverage</small><strong>${number.format(item.effective_leverage)}×</strong></div>
+        <div><small>Last run</small><strong>${formatTime(item.last_run_at)}</strong></div>
       </div>
       ${locked ? `<p class="negative">${escapeHtml(item.lock_reason)}</p>` : ""}
     </article>`;
   }).join("");
   const dated = portfolios.map((item) => item.last_run_at).filter(Boolean).sort();
-  document.getElementById("lastUpdate").textContent = dated.length ? `Stand ${formatTime(dated.at(-1))}` : "Noch kein Lauf";
+  document.getElementById("lastUpdate").textContent = dated.length ? `Updated ${formatTime(dated.at(-1))}` : "I have not run a scan yet";
 }
 
 function renderPositions() {
@@ -108,7 +108,7 @@ function renderPositions() {
   document.getElementById("positionRows").innerHTML = positions.length ? positions.map((item) => {
     const pnlClass = item.unrealized_pnl >= 0 ? "positive" : "negative";
     return `<tr><td>${escapeHtml(labels[item.strategy_id] || item.strategy_id)}</td><td>${escapeHtml(item.pair)}</td><td>${item.side === "long" ? "Long" : "Short"}</td><td>${euro.format(item.notional)}</td><td>${euro.format(item.stop_price)}</td><td>${euro.format(item.take_profit)}</td><td class="${pnlClass}">${euro.format(item.unrealized_pnl)}</td></tr>`;
-  }).join("") : `<tr><td colspan="7" class="muted">Keine Position geöffnet.</td></tr>`;
+  }).join("") : `<tr><td colspan="7" class="muted">I have no open position.</td></tr>`;
 }
 
 function renderTrades() {
@@ -118,38 +118,38 @@ function renderTrades() {
     const pnl = trade.pnl == null ? "–" : euro.format(trade.pnl);
     const pnlClass = trade.pnl == null ? "" : trade.pnl >= 0 ? "positive" : "negative";
     return `<tr><td>${escapeHtml(labels[trade.strategy_id] || trade.strategy_id)}</td><td>${escapeHtml(trade.pair)}</td><td>${trade.side === "long" ? "Long" : "Short"}</td><td class="${pnlClass}">${pnl}</td><td>${escapeHtml(trade.status)}</td></tr>`;
-  }).join("") : `<tr><td colspan="5" class="muted">Noch keine Trades.</td></tr>`;
+  }).join("") : `<tr><td colspan="5" class="muted">I have no trades yet.</td></tr>`;
 }
 
 function renderEvents() {
   const events = state.status.events || [];
   document.getElementById("eventList").innerHTML = events.length ? events.slice(0, 18).map((event) =>
     `<div class="event"><span class="event-level ${escapeHtml(event.level)}">${escapeHtml(event.level)}</span><span>${escapeHtml(event.message)}</span><time>${formatTime(event.created_at)}</time></div>`
-  ).join("") : `<p class="muted">Noch keine Ereignisse.</p>`;
+  ).join("") : `<p class="muted">I have no events yet.</p>`;
 }
 
 function renderBacktest() {
   const result = state.backtest;
   if (!result || result.status !== "ok") return;
   document.getElementById("backtestSection").hidden = false;
-  document.getElementById("backtestPeriod").textContent = `${formatTime(result.from)} bis ${formatTime(result.to)} · ${result.bars} Kerzen · ${result.pairs.length} Paare`;
+  document.getElementById("backtestPeriod").textContent = `${formatTime(result.from)} to ${formatTime(result.to)} · ${result.bars} candles · ${result.pairs.length} pairs`;
   const cards = [...result.strategies, result.benchmark];
   document.getElementById("backtestGrid").innerHTML = cards.map((item) => {
     const returnClass = item.total_return_pct >= 0 ? "positive" : "negative";
     return `<article class="backtest-card" style="border-top:2px solid ${escapeHtml(item.color)}">
       <span>${escapeHtml(item.label)}</span><strong>${euro.format(item.final_equity)}</strong>
       <div class="mini-stats">
-        <div><span>Gesamtrendite</span><b class="${returnClass}">${number.format(item.total_return_pct)} %</b></div>
-        <div><span>Max. Rückgang</span><b class="negative">${number.format(item.max_drawdown_pct)} %</b></div>
+        <div><span>Total return</span><b class="${returnClass}">${number.format(item.total_return_pct)} %</b></div>
+        <div><span>Max. drawdown</span><b class="negative">${number.format(item.max_drawdown_pct)} %</b></div>
         <div><span>Trades</span><b>${item.trades ?? "–"}</b></div>
-        <div><span>Trefferquote</span><b>${item.win_rate_pct == null ? "–" : `${number.format(item.win_rate_pct)} %`}</b></div>
-        <div><span>Tagesstopps</span><b>${item.daily_limit_hits ?? "–"}</b></div>
-        <div><span>Max. Positionen</span><b>${item.max_positions ?? "–"}</b></div>
+        <div><span>Win rate</span><b>${item.win_rate_pct == null ? "–" : `${number.format(item.win_rate_pct)} %`}</b></div>
+        <div><span>Daily stops</span><b>${item.daily_limit_hits ?? "–"}</b></div>
+        <div><span>Max. positions</span><b>${item.max_positions ?? "–"}</b></div>
       </div>
     </article>`;
   }).join("");
   const series = cards.map((item) => ({ label: item.label, color: item.color, points: item.curve }));
-  document.getElementById("chartTitle").textContent = "Multi-Coin-Backtest";
+  document.getElementById("chartTitle").textContent = "Multi-coin backtest";
   drawChart(series);
 }
 
@@ -196,7 +196,7 @@ function renderPaperChart() {
     color: labels[id]?.color || "#fff",
     points,
   }));
-  document.getElementById("chartTitle").textContent = "Paper-Kontostände";
+  document.getElementById("chartTitle").textContent = "My paper equity";
   drawChart(series);
 }
 
@@ -223,17 +223,17 @@ async function initialize() {
     renderEvents();
     renderPaperChart();
   } catch (error) {
-    document.getElementById("systemStatus").textContent = "Nicht erreichbar";
+    document.getElementById("systemStatus").textContent = "Unavailable";
     toast(error.message, true);
   }
 }
 
 document.getElementById("runButton").addEventListener("click", async (event) => {
   const button = event.currentTarget;
-  setBusy(button, true, "Prüfung läuft …");
+  setBusy(button, true, "I am scanning …");
   try {
     const result = await requestJson("/api/paper/run", { method: "POST" });
-    toast(result.status === "ok" ? `${result.new_pairs.length} neue Märkte verarbeitet.` : result.message);
+    toast(result.status === "ok" ? `${result.new_pairs.length} new markets processed.` : result.message);
     state.backtest = null;
     document.getElementById("backtestSection").hidden = true;
     await refreshStatus();
@@ -243,7 +243,7 @@ document.getElementById("runButton").addEventListener("click", async (event) => 
 
 document.getElementById("backtestButton").addEventListener("click", async (event) => {
   const button = event.currentTarget;
-  setBusy(button, true, "Backtest läuft …");
+  setBusy(button, true, "I am running the backtest …");
   try {
     state.backtest = await requestJson("/api/backtest", {
       method: "POST",
@@ -251,19 +251,19 @@ document.getElementById("backtestButton").addEventListener("click", async (event
       body: JSON.stringify({ bars: Math.min(1000, state.config.backtest_bars) }),
     });
     renderBacktest();
-    toast("Multi-Coin-Backtest abgeschlossen.");
+    toast("I completed the multi-coin backtest.");
   } catch (error) { toast(error.message, true); }
   finally { setBusy(button, false); }
 });
 
 document.getElementById("resetButton").addEventListener("click", async () => {
-  if (!window.confirm("Alle lokalen Multi-Coin-Paper-Trades und Kontostände wirklich löschen?")) return;
+  if (!window.confirm("Do I really want to delete every local multi-coin paper trade and balance?")) return;
   try {
     await requestJson("/api/reset?confirm=RESET", { method: "POST" });
     state.backtest = null;
     document.getElementById("backtestSection").hidden = true;
     await refreshStatus();
-    toast("Paper-Konten wurden zurückgesetzt.");
+    toast("I reset the paper accounts.");
   } catch (error) { toast(error.message, true); }
 });
 

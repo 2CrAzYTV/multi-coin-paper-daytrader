@@ -175,7 +175,7 @@ class Repository:
             for table in tables:
                 connection.execute(f"DELETE FROM {table}")
         self.initialize()
-        self.add_event("warning", None, "Multi-Coin-Paper-Konten wurden zurueckgesetzt.")
+        self.add_event("warning", None, "I reset the multi-coin paper accounts.")
 
     def get_portfolio(self, strategy_id: str) -> dict[str, Any]:
         with self._connect() as connection:
