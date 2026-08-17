@@ -19,22 +19,35 @@ def calculate_position_size(
     slippage_rate: float,
     max_notional: float | None = None,
 ) -> PositionSize:
-    """Size a position so the modeled stop loss stays inside the risk budget.
+    """Size a position so risk and post-cost leverage stay inside their caps.
 
-    Round-trip fees and adverse slippage are included in the estimate. A real
-    market gap can still exceed the estimate, which is why this is a risk cap,
-    not a guarantee.
+    Round-trip fees and adverse slippage are included in the modeled stop loss.
+    The nominal exposure room is also reduced by a conservative entry-cost
+    reserve. This prevents a nominal 1x portfolio from showing slightly above
+    100% margin utilization after the entry fee/slippage has reduced equity.
+    A real market gap can still exceed the estimate, so this remains a paper
+    risk model rather than a guarantee.
     """
     if equity <= 0 or entry_price <= 0 or stop_distance <= 0:
         return PositionSize(0.0, 0.0, 0.0, 0.0, 0.0)
 
+    leverage = max(1.0, max_leverage)
     risk_budget = equity * risk_rate
     round_trip_cost_per_unit = entry_price * 2 * (fee_rate + slippage_rate)
     modeled_loss_per_unit = stop_distance + round_trip_cost_per_unit
     units_by_risk = risk_budget / modeled_loss_per_unit
-    exposure_cap = equity * max_leverage
+
+    # Reserve enough room for the entry fee and adverse entry slippage before
+    # allocating the remaining nominal capacity. The leverage multiplier on the
+    # fee reserve reflects that a fee reduces equity and therefore the permitted
+    # nominal exposure by leverage times that amount.
+    entry_cost_factor = 1.0 + leverage * max(0.0, fee_rate) + max(0.0, slippage_rate)
+    exposure_cap = (equity * leverage) / entry_cost_factor
     if max_notional is not None:
-        exposure_cap = min(exposure_cap, max(0.0, max_notional))
+        exposure_cap = min(
+            exposure_cap,
+            max(0.0, max_notional) / entry_cost_factor,
+        )
     units_by_exposure = exposure_cap / entry_price
     units = max(0.0, min(units_by_risk, units_by_exposure))
     notional = units * entry_price
