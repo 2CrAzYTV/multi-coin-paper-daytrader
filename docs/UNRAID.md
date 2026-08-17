@@ -1,9 +1,9 @@
 # How I install and operate the bot on Unraid
 
-I use the published container image directly, so I do not need a Git checkout
-or Docker Compose on my Unraid server. The dashboard has no login. I bind port
-`8787` only inside a trusted LAN and never expose it through a router port
-forward.
+I use the published container image directly, so I do not need a Git checkout,
+Docker Compose, or a `.env` file on my Unraid server. The dashboard has no
+login. I bind port `8787` only inside a trusted LAN and never expose it through
+a router port forward.
 
 ## 1. I prepare persistent app data
 
@@ -19,10 +19,11 @@ I deliberately run the container without root privileges as UID/GID `99:100`.
 These permissions allow SQLite to create and update the database without
 weakening that runtime restriction.
 
-A separate `.env` file is not required when I use the included Unraid template.
-The template exposes the full requested application configuration directly as
-Unraid container variables, including the strategy defaults and compatibility
-values `WEB_PORT`, `PUID`, and `PGID`.
+A separate `.env` file is not required. The native Unraid template passes all
+application settings directly as container variables. The host WebUI port is
+handled by Unraid's port mapping, and the runtime UID/GID is fixed by the
+hardened `--user=99:100` Extra Parameter rather than duplicated as application
+environment variables.
 
 ## 2. I use the public image
 
@@ -32,10 +33,11 @@ I use this repository value in Unraid:
 ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-The public image requires no GHCR token or `docker login`. If I want to test
-the pull first, I run:
+Once the package is public, no GHCR token or registry login is required. I can
+test an anonymous pull with:
 
 ```bash
+docker logout ghcr.io
 docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
@@ -43,10 +45,10 @@ docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 
 The included
 [`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
-contains the image, WebUI, icon, data mapping, hardened runtime and all requested
-bot defaults.
+contains the image, WebUI, icon, data mapping, hardened runtime and the full bot
+configuration.
 
-The defaults are:
+The application defaults exposed by the template are:
 
 ```dotenv
 PAPER_ONLY=true
@@ -84,15 +86,18 @@ SESSION_CLOSE_MINUTE=45
 COOLDOWN_MINUTES=45
 APP_LANGUAGE=de
 DATA_DIR=/data
-WEB_PORT=8787
-PUID=99
-PGID=100
+TZ=Europe/Berlin
 ```
 
-The **Bitpanda Key** field is intentionally empty and masked in the Unraid
-form. I only fill it when I select `DATA_SOURCE=fusion`, and I create the
-Bitpanda Fusion key with **Read** permission only while leaving **Trade** and
-**Transfer** disabled.
+The **Bitpanda Key** field is intentionally empty and masked in the Unraid form.
+I only fill it when I select `DATA_SOURCE=fusion`, and I create the Bitpanda
+Fusion key with **Read** permission only while leaving **Trade** and **Transfer**
+disabled.
+
+Masking is not encryption. Unraid may persist environment-variable values in
+its local saved container template. I therefore protect `/boot/config`, do not
+share the saved template while it contains a real key, and use a Read-only key
+so the credential cannot place orders or transfer funds.
 
 The WebUI is mapped to port `8787`, persistent data is mapped from
 `/mnt/user/appdata/paper-trading-bot/data` to `/data`, and the container uses
@@ -101,11 +106,6 @@ these hardened **Extra Parameters**:
 ```text
 --user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20
 ```
-
-`PUID=99`, `PGID=100`, and `WEB_PORT=8787` are also exposed as variables for
-configuration parity. The actual hardened runtime UID/GID is fixed to `99:100`
-by the Extra Parameters, and the actual Unraid host port is controlled by the
-WebUI port mapping.
 
 I keep `PAPER_ONLY=true`. This release rejects any configuration that disables
 paper-only mode and cannot place real-money orders.
@@ -151,9 +151,9 @@ with the changed environment variables.
 
 ### How my updates work
 
-Every successful push to `main` runs tests and publishes a new `:latest`
-image. The workflow also publishes an immutable `sha-<commit>` tag. Because my
-Unraid template tracks `:latest`, Unraid can detect a changed registry digest.
+Every successful push to `main` runs tests and publishes a new `:latest` image.
+The workflow also publishes an immutable `sha-<commit>` tag. Because my Unraid
+template tracks `:latest`, Unraid can detect a changed registry digest.
 
 I install an update with:
 
@@ -162,14 +162,14 @@ I install an update with:
 3. verify health, logs, and the dashboard
 
 Unraid pulls the changed image and recreates the container from its saved
-template. My bind mount at
-`/mnt/user/appdata/paper-trading-bot/data` survives this process.
+template. My bind mount at `/mnt/user/appdata/paper-trading-bot/data` survives
+this process.
 
-Important: Unraid keeps the locally saved template of an existing container.
-If the repository template itself gains new fields, an ordinary image update
-may not automatically add those new XML entries to the already-installed
-container form. In that case I recreate the container from the updated template
-while keeping the same persistent `/data` mapping.
+Important: Unraid keeps the locally saved template of an existing container. If
+the repository template itself gains or removes fields, an ordinary image
+update may not automatically change those XML entries in the locally saved
+template. In that case I recreate the container from the current repository
+template while keeping the same persistent `/data` mapping.
 
 I know that `docker restart` and `--restart=unless-stopped` do not pull a new
 image. They only restart the locally installed image.
@@ -196,8 +196,8 @@ docker image inspect \
   --format '{{index .RepoDigests 0}}'
 ```
 
-To roll back, I temporarily replace `:latest` in the Unraid **Repository**
-field with the full `@sha256:…` reference and select **Apply**.
+To roll back, I temporarily replace `:latest` in the Unraid **Repository** field
+with the full `@sha256:…` reference and select **Apply**.
 
 ## Troubleshooting
 
@@ -218,8 +218,7 @@ then select **Run scan now**.
 
 ### I receive `unauthorized` while pulling
 
-The public image does not require a registry login. I remove stale credentials
-and retry:
+After the GHCR package is public, I remove stale credentials and retry:
 
 ```bash
 docker logout ghcr.io
