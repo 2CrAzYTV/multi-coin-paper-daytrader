@@ -5,7 +5,7 @@ or Docker Compose on my Unraid server. The dashboard has no login. I bind port
 `8787` only inside a trusted LAN and never expose it through a router port
 forward.
 
-## 1. I prepare persistent app data and configuration
+## 1. I prepare persistent app data
 
 I run this once in the Unraid terminal:
 
@@ -13,30 +13,15 @@ I run this once in the Unraid terminal:
 mkdir -p /mnt/user/appdata/paper-trading-bot/data
 chown -R nobody:users /mnt/user/appdata/paper-trading-bot/data
 chmod 775 /mnt/user/appdata/paper-trading-bot/data
-touch /mnt/user/appdata/paper-trading-bot/.env
-chown root:root /mnt/user/appdata/paper-trading-bot/.env
-chmod 600 /mnt/user/appdata/paper-trading-bot/.env
 ```
 
 I deliberately run the container without root privileges as UID/GID `99:100`.
 These permissions allow SQLite to create and update the database without
 weakening that runtime restriction.
 
-I edit `/mnt/user/appdata/paper-trading-bot/.env` and start with the complete
-[`.env.example`](../.env.example). These are the minimum values I verify:
-
-```dotenv
-PAPER_ONLY=true
-APP_LANGUAGE=en
-DATA_SOURCE=demo
-FUSION_READ_API_KEY=
-APP_TIMEZONE=Europe/Berlin
-DATA_DIR=/data
-```
-
-I use `APP_LANGUAGE=en` or `APP_LANGUAGE=de` as the default dashboard language.
-I keep the file owned by `root:root` with mode `600` because it can contain my
-Fusion API key.
+A separate `.env` file is not required when I use the included Unraid template.
+The template exposes the important application settings directly as Unraid
+container variables and also includes the complete advanced strategy defaults.
 
 ## 2. I use the public image
 
@@ -53,35 +38,51 @@ the pull first, I run:
 docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-## 3. I create the container
+## 3. I create the container from the template
 
-Under **Docker → Add Container**, I enter:
+The included
+[`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
+contains the image, WebUI, icon, data mapping, hardened runtime and bot defaults.
+The main fields shown directly in the Unraid template are:
 
-| Field | My value |
+| Field | Default |
 | --- | --- |
 | Name | `paper-trading-bot` |
 | Repository | `ghcr.io/2crazytv/multi-coin-paper-daytrader:latest` |
 | Network Type | `bridge` |
 | WebUI | `http://[IP]:[PORT:8787]/` |
-| Container Port | `8787` |
-| Host Port | `8787` |
-| Container Path | `/data` |
-| Host Path | `/mnt/user/appdata/paper-trading-bot/data` |
-| Access Mode | `Read/Write` |
-| Container Variable | `TZ=Europe/Berlin` |
+| WebUI Port | `8787` |
+| Persistent Data | `/mnt/user/appdata/paper-trading-bot/data` → `/data` |
+| UI Language | `de` |
+| Market Data Source | `demo` |
+| Starting Paper Capital | `1000` EUR |
+| Risk per Trade | `0.005` = 0.5% |
+| Maximum Aggregate Risk | `0.01` = 1% |
+| Maximum Daily Loss | `0.02` = 2% |
+| Maximum Open Positions | `2` |
+| Maximum Trades per Day | `3` |
+| Trading Pairs | `BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR` |
+| Candle Interval | `15m` |
+| Trend Interval | `1h` |
 
-I add these **Extra Parameters**:
+The Fusion API key field is masked in the Unraid form. I only fill it when I
+select `DATA_SOURCE=fusion`, and I create the Bitpanda Fusion key with **Read**
+permission only while leaving **Trade** and **Transfer** disabled.
+
+Under **Show more settings** / advanced view, the template also exposes the
+remaining strategy and runtime defaults such as hard drawdown, fee and slippage
+rates, EMA/ATR/RSI windows, stop and take-profit parameters, history/backtest
+bars, poll interval, session close time, cooldown, application timezone,
+`DATA_DIR`, `FUSION_BASE_URL`, and the `PAPER_ONLY=true` safety lock.
+
+The template uses these **Extra Parameters**:
 
 ```text
---env-file=/mnt/user/appdata/paper-trading-bot/.env --user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20
+--user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20
 ```
 
-The included
-[`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
-already contains these values. It intentionally defines only the WebUI port,
-the persistent data path, and the container timezone. I keep every application
-setting in `.env`; adding the same application setting as an Unraid variable
-would pass an explicit `-e` option and override the value from my `.env` file.
+I keep `PAPER_ONLY=true`. This release rejects any configuration that disables
+paper-only mode and cannot place real-money orders.
 
 ## 4. I verify the first start
 
@@ -104,22 +105,21 @@ I open the dashboard at `http://UNRAID-IP:8787`.
 
 ## 5. I select English or German
 
-I use the language selector in the top bar to switch the complete dashboard
-between English and German immediately. The browser stores my selection on that
-device. For a new browser, `APP_LANGUAGE=en` or `APP_LANGUAGE=de` in `.env`
-defines the initial language. A stored browser selection takes precedence over
-that default.
+The Unraid template defaults `APP_LANGUAGE=de`. I can change that field to
+`en` before applying the container. I can also use the language selector in the
+top bar to switch the complete dashboard between English and German immediately.
+The browser stores my selection on that device.
 
-Changing the selector does not restart the container and does not alter paper
-trades, strategy rules, or market data. If I change `APP_LANGUAGE` in `.env`, I
-select **Apply** or recreate the container so the new default reaches the app.
+A stored browser selection takes precedence over the container default. Changing
+the selector does not restart the container and does not alter paper trades,
+strategy rules, or market data.
 
 ## 6. I enable read-only current market data
 
-If I want current Fusion data, I set `DATA_SOURCE=fusion` and provide
-`FUSION_READ_API_KEY`. I create that key with **Read** permission only and
-leave **Trade** and **Transfer** disabled. I then select **Apply** so Unraid
-recreates the container.
+I change **Market Data Source** from `demo` to `fusion` and fill **Bitpanda
+Fusion Read API Key**. I create that key with **Read** permission only and leave
+**Trade** and **Transfer** disabled. I then select **Apply** so Unraid recreates
+the container with the changed environment variables.
 
 ## Updates, backup, and rollback
 
@@ -138,6 +138,13 @@ I install an update with:
 Unraid pulls the changed image and recreates the container from its saved
 template. My bind mount at
 `/mnt/user/appdata/paper-trading-bot/data` survives this process.
+
+Important: Unraid keeps the locally saved template of an existing container.
+If the repository template itself gains new fields, an ordinary image update
+may not automatically add those new XML entries to the already-installed
+container form. In that case I open the container for editing and use the
+current repository template as reference, or recreate the container from the
+updated template while keeping the same persistent `/data` mapping.
 
 I know that `docker restart` and `--restart=unless-stopped` do not pull a new
 image. They only restart the locally installed image. The `:latest` workflow
@@ -188,8 +195,8 @@ If I have just changed `DATA_SOURCE=demo` to `DATA_SOURCE=fusion`, my database
 may still contain the last saved demo snapshots. For a clean Fusion simulation,
 I use **Reset my paper accounts → Delete paper data**, confirm the deletion, and
 then select **Run scan now**. This deletes local simulated balances, positions,
-trades, and cached market snapshots, but it does not delete my `.env`, API key,
-or container configuration.
+trades, and cached market snapshots, but it does not delete the container
+configuration or Fusion API key.
 
 Before deleting paper data that I want to preserve, I create a database backup
 as described above.
@@ -217,8 +224,3 @@ curl -I --max-time 5 http://UNRAID-IP:8787/
 
 I expect `8787/tcp` to map to `0.0.0.0:8787` or my intended LAN address. I
 also check the browser cache, local firewall, and VLAN rules.
-
-### I receive `Permission denied` for `/data`
-
-I repeat the ownership commands from section 1. I do not work around the problem
-by running the container as root.
