@@ -3,6 +3,11 @@ from __future__ import annotations
 from .models import PositionSize
 
 
+# Paper-only approximation used for isolated-margin liquidation estimates.
+# This is deliberately not presented as Bitpanda's exact liquidation formula.
+PAPER_MAINTENANCE_MARGIN_RATE = 0.005
+
+
 def calculate_position_size(
     *,
     equity: float,
@@ -42,6 +47,42 @@ def calculate_position_size(
         estimated_stop_loss=modeled_loss,
         effective_leverage=effective_leverage,
     )
+
+
+def margin_required(notional: float, leverage: float) -> float:
+    """Return simulated isolated initial margin for a notional exposure."""
+    if notional <= 0:
+        return 0.0
+    return notional / max(1.0, leverage)
+
+
+def margin_utilization(notional: float, equity: float, leverage: float) -> float:
+    """Return the fraction of account equity tied up as simulated initial margin."""
+    if equity <= 0:
+        return 1.0 if notional > 0 else 0.0
+    return margin_required(notional, leverage) / equity
+
+
+def estimate_liquidation_price(
+    entry_price: float,
+    direction: int,
+    leverage: float,
+    maintenance_margin_rate: float = PAPER_MAINTENANCE_MARGIN_RATE,
+) -> float | None:
+    """Estimate an isolated-margin liquidation threshold for paper simulation.
+
+    The model reserves ``1/leverage`` as initial margin and a small maintenance
+    margin buffer. It is intentionally exchange-agnostic and must not be read as
+    Bitpanda's exact margin formula. At 1x there is no modeled liquidation.
+    """
+    if entry_price <= 0 or leverage <= 1 or direction not in {-1, 1}:
+        return None
+    if not 0 <= maintenance_margin_rate < 1:
+        raise ValueError("maintenance_margin_rate must be between 0 and 1")
+    adverse_move = max(0.0, (1.0 / leverage) - maintenance_margin_rate)
+    if direction > 0:
+        return max(0.0, entry_price * (1.0 - adverse_move))
+    return entry_price * (1.0 + adverse_move)
 
 
 def daily_limit_breached(

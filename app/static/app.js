@@ -16,7 +16,7 @@ const translations = {
     languageAria: "Dashboard language",
     eyebrow: "Five markets. One shared risk budget.",
     heroTitle: "Crypto day trading.<br /><span>Without real money.</span>",
-    heroCopy: "I scan liquid EUR pairs for 15-minute signals and compare long-only, long/short, and up to 2× leverage. I keep every execution simulated.",
+    heroCopy: "I scan liquid EUR pairs for 15-minute signals and compare long-only with simulated long/short leverage up to 10×. Every execution, margin value, and liquidation remains paper-only.",
     status: "Status",
     scanInterval: "Scan interval",
     dataSource: "Data source",
@@ -47,6 +47,11 @@ const translations = {
     pair: "Pair",
     side: "Side",
     notional: "Notional",
+    leverage: "Leverage",
+    maxLeverage: "Max. leverage",
+    margin: "Paper margin",
+    marginUsage: "Margin usage",
+    liquidation: "Est. liquidation",
     stop: "Stop",
     target: "Target",
     openPnl: "Open P&L",
@@ -57,7 +62,7 @@ const translations = {
     chartEmpty: "I start with a paper scan or backtest.",
     historicalSimulation: "Historical simulation",
     multiCoinBacktest: "My multi-coin backtest",
-    backtestDisclaimer: "I do not treat a backtest as a return promise. Short intraday history, assumed fees, execution, and future market conditions can differ substantially.",
+    backtestDisclaimer: "This backtest includes an exchange-agnostic paper liquidation estimate. It is not Bitpanda's exact margin formula and is not a return promise. Fees, gaps, execution and future conditions can differ substantially.",
     journal: "Journal",
     latestTrades: "My latest trades",
     result: "Result",
@@ -70,6 +75,7 @@ const translations = {
     newTradesPerDay: "new trades per day",
     closeDaily: "I close every open position each day",
     noOrderEndpoints: "I include no order, account, or transfer endpoint",
+    paperLiquidationModel: "Liquidation prices are simulated estimates, not exchange quotes",
     system: "System",
     eventLog: "My event log",
     noEvents: "I have no events yet.",
@@ -112,7 +118,10 @@ const translations = {
     trades: "Trades",
     winRate: "Win rate",
     dailyStops: "Daily stops",
+    liquidations: "Paper liquidations",
     maxPositions: "Max. positions",
+    maxEffectiveLeverage: "Peak effective leverage",
+    peakMarginUsage: "Peak margin usage",
     backtestChartTitle: "Multi-coin backtest",
     equalWeightHold: "Equal-weight hold",
     unavailable: "Unavailable",
@@ -134,7 +143,7 @@ const translations = {
     languageAria: "Sprache der Benutzeroberfläche",
     eyebrow: "Fünf Märkte. Ein gemeinsames Risikobudget.",
     heroTitle: "Krypto-Daytrading.<br /><span>Ohne Echtgeld.</span>",
-    heroCopy: "Ich prüfe liquide EUR-Paare auf 15-Minuten-Signale und vergleiche Nur-Long, Long/Short sowie bis zu 2× Hebel. Jede Ausführung bleibt simuliert.",
+    heroCopy: "Ich prüfe liquide EUR-Paare auf 15-Minuten-Signale und vergleiche Nur-Long mit simuliertem Long/Short-Hebel bis 10×. Ausführung, Margin und Liquidation bleiben vollständig Paper-only.",
     status: "Status",
     scanInterval: "Prüfintervall",
     dataSource: "Datenquelle",
@@ -165,6 +174,11 @@ const translations = {
     pair: "Paar",
     side: "Richtung",
     notional: "Nominalwert",
+    leverage: "Hebel",
+    maxLeverage: "Max. Hebel",
+    margin: "Paper-Margin",
+    marginUsage: "Margin-Auslastung",
+    liquidation: "Gesch. Liquidation",
     stop: "Stop",
     target: "Ziel",
     openPnl: "Offener G/V",
@@ -175,7 +189,7 @@ const translations = {
     chartEmpty: "Ich beginne mit einem Paper-Scan oder Backtest.",
     historicalSimulation: "Historische Simulation",
     multiCoinBacktest: "Mein Multi-Coin-Backtest",
-    backtestDisclaimer: "Ich behandle einen Backtest nicht als Renditeversprechen. Kurze Intraday-Historien, angenommene Gebühren, Ausführung und künftige Marktbedingungen können erheblich abweichen.",
+    backtestDisclaimer: "Dieser Backtest enthält eine börsenunabhängige Paper-Liquidationsschätzung. Sie ist nicht die exakte Bitpanda-Marginformel und kein Renditeversprechen. Gebühren, Gaps, Ausführung und künftige Marktbedingungen können erheblich abweichen.",
     journal: "Journal",
     latestTrades: "Meine neuesten Trades",
     result: "Ergebnis",
@@ -188,6 +202,7 @@ const translations = {
     newTradesPerDay: "neue Trades pro Tag",
     closeDaily: "Ich schließe täglich jede offene Position",
     noOrderEndpoints: "Ich enthalte keinen Order-, Konto- oder Transfer-Endpunkt",
+    paperLiquidationModel: "Liquidationspreise sind simulierte Schätzungen und keine Börsenkurse",
     system: "System",
     eventLog: "Mein Ereignisprotokoll",
     noEvents: "Ich habe noch keine Ereignisse.",
@@ -230,7 +245,10 @@ const translations = {
     trades: "Trades",
     winRate: "Trefferquote",
     dailyStops: "Tagesstopps",
+    liquidations: "Paper-Liquidationen",
     maxPositions: "Max. Positionen",
+    maxEffectiveLeverage: "Spitzenwert eff. Hebel",
+    peakMarginUsage: "Spitzenwert Margin-Auslastung",
     backtestChartTitle: "Multi-Coin-Backtest",
     equalWeightHold: "Gleichgewichtet halten",
     unavailable: "Nicht verfügbar",
@@ -358,21 +376,15 @@ function setBusy(button, busy, busyKey) {
 }
 
 function strategyLabel(strategyId, fallback) {
-  const labels = {
-    long_only_1x: {
-      en: "Long-only · 1×",
-      de: "Nur Long · 1×",
-    },
-    long_short_1x: {
-      en: "Long/Short · 1×",
-      de: "Long/Short · 1×",
-    },
-    long_short_2x: {
-      en: "Long/Short · max. 2×",
-      de: "Long/Short · max. 2×",
-    },
-  };
-  return labels[strategyId]?.[state.language] || fallback || strategyId;
+  if (strategyId === "long_only_1x") {
+    return state.language === "de" ? "Nur Long · 1×" : "Long-only · 1×";
+  }
+  const match = String(strategyId || "").match(/^long_short_([0-9]+(?:p[0-9]+)?)x$/);
+  if (match) {
+    const leverage = match[1].replace("p", ".");
+    return "Long/Short · max. " + leverage + "×";
+  }
+  return fallback || strategyId;
 }
 
 function backtestLabel(item) {
@@ -408,6 +420,7 @@ function translateRuntimeText(value) {
     "Daily position close": "Täglicher Positionsschluss",
     "EMA exit": "EMA-Ausstieg",
     "Overnight emergency exit": "Notausstieg vor dem Tageswechsel",
+    "Simulated liquidation": "Simulierte Liquidation",
   };
   if (exact[text]) return exact[text];
   let match = text.match(/^I do not have enough candles for (.+)\.$/);
@@ -492,7 +505,9 @@ function renderPortfolios() {
         "<div><small>" + escapeHtml(t("tradesToday")) + "</small><strong>" + item.trades_today + "/" + state.config.max_trades_per_day + "</strong></div>" +
         "<div><small>" + escapeHtml(t("notional")) + "</small><strong>" + escapeHtml(euro.format(item.notional)) + "</strong></div>" +
         "<div><small>" + escapeHtml(t("openRisk")) + "</small><strong>" + escapeHtml(euro.format(item.open_risk)) + "</strong></div>" +
-        "<div><small>" + escapeHtml(t("effectiveLeverage")) + "</small><strong>" + escapeHtml(number.format(item.effective_leverage)) + "×</strong></div>" +
+        "<div><small>" + escapeHtml(t("effectiveLeverage")) + "</small><strong>" + escapeHtml(number.format(item.effective_leverage)) + "× / " + escapeHtml(number.format(item.max_leverage)) + "×</strong></div>" +
+        "<div><small>" + escapeHtml(t("margin")) + "</small><strong>" + escapeHtml(euro.format(item.margin_required)) + "</strong></div>" +
+        "<div><small>" + escapeHtml(t("marginUsage")) + "</small><strong>" + escapeHtml(number.format(item.margin_utilization_pct)) + " %</strong></div>" +
         "<div><small>" + escapeHtml(t("lastRun")) + "</small><strong>" + escapeHtml(formatTime(item.last_run_at)) + "</strong></div>" +
       "</div>" +
       (locked ? "<p class=\"negative\">" + escapeHtml(translateRuntimeText(item.lock_reason)) + "</p>" : "") +
@@ -513,14 +528,18 @@ function renderPositions() {
   ]));
   document.getElementById("positionRows").innerHTML = positions.length ? positions.map((item) => {
     const pnlClass = item.unrealized_pnl >= 0 ? "positive" : "negative";
+    const liquidation = item.liquidation_price == null ? "–" : formatMarketPrice(item.liquidation_price);
     return "<tr><td>" + escapeHtml(labels[item.strategy_id] || item.strategy_id) +
       "</td><td>" + escapeHtml(item.pair) +
       "</td><td>" + escapeHtml(item.side === "long" ? t("long") : t("short")) +
       "</td><td>" + escapeHtml(euro.format(item.notional)) +
+      "</td><td>" + escapeHtml(number.format(item.max_leverage)) + "×" +
+      "</td><td>" + escapeHtml(euro.format(item.margin_required)) +
+      "</td><td>" + escapeHtml(liquidation) +
       "</td><td>" + escapeHtml(formatMarketPrice(item.stop_price)) +
       "</td><td>" + escapeHtml(formatMarketPrice(item.take_profit)) +
       "</td><td class=\"" + pnlClass + "\">" + escapeHtml(euro.format(item.unrealized_pnl)) + "</td></tr>";
-  }).join("") : "<tr><td colspan=\"7\" class=\"muted\">" + escapeHtml(t("noOpenPosition")) + "</td></tr>";
+  }).join("") : "<tr><td colspan=\"10\" class=\"muted\">" + escapeHtml(t("noOpenPosition")) + "</td></tr>";
 }
 
 function renderTrades() {
@@ -569,8 +588,12 @@ function renderBacktest() {
       "<div class=\"mini-stats\">" +
         "<div><span>" + escapeHtml(t("totalReturn")) + "</span><b class=\"" + returnClass + "\">" + escapeHtml(number.format(item.total_return_pct)) + " %</b></div>" +
         "<div><span>" + escapeHtml(t("maxDrawdown")) + "</span><b class=\"negative\">" + escapeHtml(number.format(item.max_drawdown_pct)) + " %</b></div>" +
+        "<div><span>" + escapeHtml(t("maxLeverage")) + "</span><b>" + escapeHtml(number.format(item.max_leverage ?? 1)) + "×</b></div>" +
+        "<div><span>" + escapeHtml(t("maxEffectiveLeverage")) + "</span><b>" + (item.max_effective_leverage == null ? "–" : escapeHtml(number.format(item.max_effective_leverage)) + "×") + "</b></div>" +
+        "<div><span>" + escapeHtml(t("peakMarginUsage")) + "</span><b>" + (item.max_margin_utilization_pct == null ? "–" : escapeHtml(number.format(item.max_margin_utilization_pct)) + " %") + "</b></div>" +
         "<div><span>" + escapeHtml(t("trades")) + "</span><b>" + (item.trades ?? "–") + "</b></div>" +
         "<div><span>" + escapeHtml(t("winRate")) + "</span><b>" + (item.win_rate_pct == null ? "–" : escapeHtml(number.format(item.win_rate_pct)) + " %") + "</b></div>" +
+        "<div><span>" + escapeHtml(t("liquidations")) + "</span><b>" + (item.liquidations ?? "–") + "</b></div>" +
         "<div><span>" + escapeHtml(t("dailyStops")) + "</span><b>" + (item.daily_limit_hits ?? "–") + "</b></div>" +
         "<div><span>" + escapeHtml(t("maxPositions")) + "</span><b>" + (item.max_positions ?? "–") + "</b></div>" +
       "</div></article>";

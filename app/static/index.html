@@ -34,8 +34,8 @@
           <p class="eyebrow" data-i18n="eyebrow">Five markets. One shared risk budget.</p>
           <h1 data-i18n-html="heroTitle">Crypto day trading.<br /><span>Without real money.</span></h1>
           <p class="hero-copy" data-i18n="heroCopy">
-            I scan liquid EUR pairs for 15-minute signals and compare long-only,
-            long/short, and up to 2× leverage. I keep every execution simulated.
+            I scan liquid EUR pairs for 15-minute signals and compare long-only
+            with simulated long/short leverage up to 10×. Everything remains paper-only.
           </p>
         </div>
         <div class="hero-panel">
@@ -97,8 +97,8 @@
         <div class="section-heading compact"><div><p class="section-kicker" data-i18n="exposure">Exposure</p><h2 data-i18n="openPositionsTitle">My open paper positions</h2></div></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th data-i18n="strategy">Strategy</th><th data-i18n="pair">Pair</th><th data-i18n="side">Side</th><th data-i18n="notional">Notional</th><th data-i18n="stop">Stop</th><th data-i18n="target">Target</th><th data-i18n="openPnl">Open P&amp;L</th></tr></thead>
-            <tbody id="positionRows"><tr><td colspan="7" class="muted" data-i18n="noOpenPosition">I have no open position.</td></tr></tbody>
+            <thead><tr><th data-i18n="strategy">Strategy</th><th data-i18n="pair">Pair</th><th data-i18n="side">Side</th><th data-i18n="notional">Notional</th><th data-i18n="leverage">Leverage</th><th data-i18n="margin">Paper margin</th><th data-i18n="liquidation">Est. liquidation</th><th data-i18n="stop">Stop</th><th data-i18n="target">Target</th><th data-i18n="openPnl">Open P&amp;L</th></tr></thead>
+            <tbody id="positionRows"><tr><td colspan="10" class="muted" data-i18n="noOpenPosition">I have no open position.</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -119,8 +119,8 @@
         </div>
         <div id="backtestGrid" class="backtest-grid"></div>
         <p class="disclaimer" data-i18n="backtestDisclaimer">
-          I do not treat a backtest as a return promise. Short intraday history,
-          assumed fees, execution, and future market conditions can differ substantially.
+          This backtest includes a paper-only liquidation estimate. It is not an
+          exchange liquidation quote and it is not a return promise.
         </p>
       </section>
 
@@ -141,6 +141,7 @@
             <li><span data-i18n="allowAtMost">I allow at most</span> <strong id="maxPositions">–</strong> <span data-i18n="simultaneousPositions">simultaneous positions</span></li>
             <li><span data-i18n="allowAtMost">I allow at most</span> <strong id="maxTrades">–</strong> <span data-i18n="newTradesPerDay">new trades per day</span></li>
             <li data-i18n="closeDaily">I close every open position each day</li>
+            <li data-i18n="paperLiquidationModel">Liquidation prices are simulated estimates, not exchange quotes</li>
             <li data-i18n="noOrderEndpoints">I include no order, account, or transfer endpoint</li>
           </ul>
         </section>
