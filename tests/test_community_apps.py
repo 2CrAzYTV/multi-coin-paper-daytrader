@@ -49,7 +49,7 @@ class CommunityApplicationsTests(unittest.TestCase):
         self.assertNotIn("--env-file=", root.findtext("ExtraParams") or "")
 
         configs = root.findall("Config")
-        self.assertEqual(len(configs), 38)
+        self.assertEqual(len(configs), 46)
         variables = {
             item.attrib["Target"]: item
             for item in configs
@@ -59,6 +59,11 @@ class CommunityApplicationsTests(unittest.TestCase):
         self.assertEqual(variables["DATA_SOURCE"].attrib["Default"], "demo")
         self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Mask"], "true")
         self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Default"], "")
+        self.assertEqual(
+            variables["PAIRS"].attrib["Default"],
+            "BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR,LINK-EUR,AVAX-EUR,SUI-EUR,TAO-EUR,DOGE-EUR",
+        )
+        self.assertEqual(variables["BACKTEST_BARS"].attrib["Default"], "5000")
 
     def test_ca_files_have_no_starter_placeholders(self):
         for relative in (
