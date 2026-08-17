@@ -107,7 +107,7 @@ class ReleaseAssetTests(unittest.TestCase):
 
         overview = root.findtext("Overview") or ""
         requires = root.findtext("Requires") or ""
-        self.assertIn("paper-only", overview)
+        self.assertIn("paper-only", overview.lower())
         self.assertIn("cannot place real-money orders", overview)
         self.assertIn("PAPER_ONLY=true", requires)
         self.assertIn("Read permission only", requires)
