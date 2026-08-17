@@ -44,4 +44,25 @@
       );
     });
   };
+
+  const backtestButton = document.getElementById("backtestButton");
+  backtestButton.addEventListener("click", async (event) => {
+    event.stopImmediatePropagation();
+    const button = event.currentTarget;
+    setBusy(button, true, "backtesting");
+    try {
+      const configuredBars = Math.max(100, Math.min(5000, Number(state.config.backtest_bars) || 5000));
+      state.backtest = await requestJson("/api/backtest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bars: configuredBars }),
+      });
+      renderBacktest();
+      toast(t("backtestDone"));
+    } catch (error) {
+      toast(translateRuntimeText(error.message), true);
+    } finally {
+      setBusy(button, false);
+    }
+  }, { capture: true });
 })();
