@@ -50,7 +50,9 @@ class SignalQualityTests(unittest.TestCase):
         )
 
     def _trend(self, long=True, weak=False, wrong_slope=False):
-        index = pd.date_range("2026-08-17T08:00:00Z", periods=2, freq="1h")
+        # The second hourly bar must already be closed before the 08:30 entry candle
+        # so forward-filling applies its quality state to the candidate signal.
+        index = pd.date_range("2026-08-17T07:00:00Z", periods=2, freq="1h")
         if long:
             fast = [101.0, 102.0 if not wrong_slope else 100.0]
             slow = [100.0, 100.0]
