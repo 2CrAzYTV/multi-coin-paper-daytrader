@@ -9,12 +9,19 @@
   times, scanner results, portfolio details, controls, and known event messages.
 - I persist the selected language per browser and expose `APP_LANGUAGE=en|de`
   as the default for new browsers.
-- I aligned the Unraid template with my tested installation: one protected
-  `.env`, UID/GID 99:100, a read-only filesystem, dropped capabilities, a
-  writable `/tmp` tmpfs, PID limit 2048, persistent `/data`, and port 8787.
-- I expanded the Unraid template description and guide with the required `.env`
-  settings, ownership, permissions, and the warning against duplicate Unraid
-  variables that would override `.env`.
+- I changed the Unraid template so the bot configuration is managed directly
+  from the Unraid form instead of requiring a separate `.env` file.
+- I expose the main defaults directly in the template: German UI, demo/Fusion
+  data source, masked Fusion read API key, €1000 starting paper capital, 0.5%
+  per-trade risk, 1% aggregate risk, 2% maximum daily loss, two open positions,
+  three trades per day, the five EUR pairs, 15-minute candles, and a 1-hour
+  trend filter.
+- I expose the remaining strategy, scheduling, timezone, persistence, fee,
+  slippage, backtest, and paper-only safety settings in the advanced Unraid
+  configuration while preserving the hardened non-root/read-only runtime.
+- I documented that existing Unraid containers keep a locally saved template,
+  so adding fields to the repository XML may require recreating or refreshing
+  the container template before the new form fields appear.
 - I display sub-euro market prices with four to six decimal places while I keep
   portfolio currency values at two decimal places.
 - I explain that scanner prices are closed 15-minute Fusion candle values, so
