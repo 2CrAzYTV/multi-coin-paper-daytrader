@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import threading
+import time
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import numpy as np
@@ -18,7 +21,14 @@ class MarketDataError(RuntimeError): pass
 
 class MarketData:
     """GET-only Bitpanda Fusion market-data reader plus deterministic demo data."""
-    def __init__(self, settings: Settings): self.settings = settings
+
+    MIN_REQUEST_INTERVAL = 0.20
+    RATE_LIMIT_BACKOFF = (1.0, 2.0, 4.0, 8.0, 16.0)
+
+    def __init__(self, settings: Settings):
+        self.settings = settings
+        self._request_lock = threading.Lock()
+        self._last_request_started = 0.0
 
     def history(self, pair: str, interval: str | None = None, limit: int | None = None) -> pd.DataFrame:
         selected_interval = interval or self.settings.candle_interval
@@ -48,9 +58,6 @@ class MarketData:
         return tuple(sorted({str(item.get("pair", "")).upper() for item in payload if str(item.get("pair", "")).upper().endswith("-EUR")}))
 
     def _fusion_history(self, pair: str, interval: str, limit: int) -> pd.DataFrame:
-        # Fusion may return fewer candles than requested even when older data exists.
-        # Keep paging backwards until the requested horizon is filled, the API returns
-        # an empty page, or the oldest timestamp stops moving backwards.
         remaining = min(5_000, limit); chunks: list[pd.DataFrame] = []; before: int | None = None
         while remaining > 0:
             request_limit = min(1_000, remaining); params: dict[str, Any] = {"interval": interval, "limit": request_limit}
@@ -72,15 +79,51 @@ class MarketData:
         if len(data) < 60: raise MarketDataError(f"I received too few candles for {pair}: {len(data)} instead of at least 60.")
         return data
 
+    @staticmethod
+    def _retry_after_seconds(value: str | None) -> float | None:
+        if not value:
+            return None
+        try:
+            return max(0.0, float(value))
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(value)
+                if retry_at.tzinfo is None:
+                    retry_at = retry_at.replace(tzinfo=UTC)
+                return max(0.0, (retry_at - datetime.now(UTC)).total_seconds())
+            except (TypeError, ValueError, OverflowError):
+                return None
+
     def _get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         if not self.settings.fusion_read_api_key: raise MarketDataError("I require a Fusion API key with Read permission when DATA_SOURCE=fusion.")
-        try:
-            import httpx
-            with httpx.Client(base_url=self.settings.fusion_base_url, headers={"x-api-key": self.settings.fusion_read_api_key, "Accept":"application/json"}, timeout=20) as client:
-                response=client.get(path, params=params); response.raise_for_status(); return response.json()
-        except Exception as exc:
-            status=getattr(getattr(exc,"response",None),"status_code",None); detail=f"HTTP {status}" if status else type(exc).__name__
-            raise MarketDataError(f"I could not retrieve Bitpanda Fusion data ({detail}).") from exc
+        import httpx
+
+        with self._request_lock:
+            for attempt in range(len(self.RATE_LIMIT_BACKOFF) + 1):
+                elapsed = time.monotonic() - self._last_request_started
+                if elapsed < self.MIN_REQUEST_INTERVAL:
+                    time.sleep(self.MIN_REQUEST_INTERVAL - elapsed)
+                self._last_request_started = time.monotonic()
+                try:
+                    with httpx.Client(base_url=self.settings.fusion_base_url, headers={"x-api-key": self.settings.fusion_read_api_key, "Accept":"application/json"}, timeout=20) as client:
+                        response = client.get(path, params=params)
+                    if response.status_code == 429:
+                        if attempt >= len(self.RATE_LIMIT_BACKOFF):
+                            raise MarketDataError("I could not retrieve Bitpanda Fusion data (HTTP 429 after automatic retries).")
+                        retry_after = self._retry_after_seconds(response.headers.get("Retry-After"))
+                        delay = max(self.RATE_LIMIT_BACKOFF[attempt], retry_after or 0.0)
+                        time.sleep(delay)
+                        continue
+                    response.raise_for_status()
+                    return response.json()
+                except MarketDataError:
+                    raise
+                except httpx.HTTPStatusError as exc:
+                    status = exc.response.status_code
+                    raise MarketDataError(f"I could not retrieve Bitpanda Fusion data (HTTP {status}).") from exc
+                except Exception as exc:
+                    raise MarketDataError(f"I could not retrieve Bitpanda Fusion data ({type(exc).__name__}).") from exc
+        raise MarketDataError("I could not retrieve Bitpanda Fusion data after automatic retries.")
 
     @staticmethod
     def _normalize(data: pd.DataFrame, pair: str, min_rows: int = 60) -> pd.DataFrame:
