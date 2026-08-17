@@ -18,7 +18,7 @@ def _leverage_id(value: float) -> str:
 
 
 def build_strategies(leverages: tuple[float, ...]) -> tuple[StrategySpec, ...]:
-    """Build paper-only comparison strategies for configured leverage values."""
+    """Build paper-only comparison strategies for approved leverage presets."""
     palette = (
         "#66a7ff",
         "#f4b860",
@@ -47,8 +47,11 @@ def build_strategies(leverages: tuple[float, ...]) -> tuple[StrategySpec, ...]:
     return tuple(specs)
 
 
-DEFAULT_LEVERAGES = (1.0, 2.0)
-STRATEGIES = build_strategies(DEFAULT_LEVERAGES)
+# Current paper presets mirror the leverage levels Bitpanda documents for its
+# margin product. They are simulation limits only: no margin account, loan,
+# derivative, or real order is created by this application.
+BITPANDA_PAPER_LEVERAGES = (1.0, 2.0, 3.0, 5.0, 10.0)
+STRATEGIES = build_strategies(BITPANDA_PAPER_LEVERAGES)
 
 
 @dataclass(frozen=True)
