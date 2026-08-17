@@ -65,20 +65,36 @@ class Backtester:
 
     def run(self, bars: int | None = None) -> dict[str, Any]:
         selected_bars = min(5_000, bars or self.settings.backtest_bars)
+        # Fusion can be one candle short at a window boundary. Requiring 95% keeps
+        # genuinely new/empty markets out without rejecting otherwise complete history.
+        minimum_history_bars = max(100, math.floor(selected_bars * 0.95))
         constraints = self.market.pair_constraints()
         frames: dict[str, pd.DataFrame] = {}
         failures: dict[str, str] = {}
+        skipped: dict[str, str] = {}
         for pair in self.settings.pairs:
             if pair not in constraints:
-                failures[pair] = "not active"
+                skipped[pair] = "not active on Bitpanda Fusion"
                 continue
             try:
                 frame = self.market.history(pair, self.settings.candle_interval, selected_bars)
+                if len(frame) < minimum_history_bars:
+                    skipped[pair] = (
+                        f"insufficient history: {len(frame)} candles; "
+                        f"minimum {minimum_history_bars}"
+                    )
+                    continue
+                if frame.index.has_duplicates:
+                    skipped[pair] = "duplicate candle timestamps"
+                    continue
+                if frame[["Open", "High", "Low", "Close"]].isna().any().any():
+                    skipped[pair] = "missing OHLC values"
+                    continue
                 frames[pair] = self._prepare(frame)
             except Exception as exc:
-                failures[pair] = str(exc)
+                skipped[pair] = f"market data unavailable: {exc}"
         if not frames:
-            raise MarketDataError("I found no pair available for the multi-coin backtest.")
+            raise MarketDataError("I found no pair with enough quality history for the multi-coin backtest.")
 
         timestamps = sorted(set().union(*(set(frame.index) for frame in frames.values())))
         results = [self._run_strategy(spec, frames, constraints, timestamps) for spec in STRATEGIES]
@@ -87,6 +103,13 @@ class Backtester:
             "status": "ok",
             "pairs": sorted(frames),
             "failures": failures,
+            "skipped_pairs": skipped,
+            "quality_filter": {
+                "requested_bars": selected_bars,
+                "minimum_history_bars": minimum_history_bars,
+                "usable_count": len(frames),
+                "skipped_count": len(skipped),
+            },
             "from": pd.Timestamp(timestamps[0]).isoformat(),
             "to": pd.Timestamp(timestamps[-1]).isoformat(),
             "bars": len(timestamps),
@@ -178,334 +201,236 @@ class Backtester:
                     account.cooldowns[pair] = timestamp + pd.Timedelta(minutes=self.settings.cooldown_minutes)
                     continue
                 risk_per_unit = float(position["initial_risk"]) / max(float(position["units"]), 1e-12)
-                favorable = direction * (
-                    float(bar["High"] if direction > 0 else bar["Low"]) - float(position["entry"])
-                )
-                if favorable >= risk_per_unit * self.settings.trailing_trigger_r:
-                    if direction > 0:
-                        position["stop"] = max(float(position["stop"]), float(position["entry"]))
-                    else:
-                        position["stop"] = min(float(position["stop"]), float(position["entry"]))
+                if direction > 0:
+                    position["stop"] = max(float(position["stop"]), float(bar["Close"]) - risk_per_unit)
+                else:
+                    position["stop"] = min(float(position["stop"]), float(bar["Close"]) + risk_per_unit)
 
             equity = self._equity(account, prices)
-            if daily_limit_breached(account.day_start, equity, self.settings.max_daily_loss):
-                self._close_all(account, prices, self.settings.slippage_rate)
-                account.daily_locked = True
-                account.daily_limit_hits += 1
-                equity = self._equity(account, prices)
             account.peak = max(account.peak, equity)
-            if drawdown(account.peak, equity) >= self.settings.hard_drawdown:
-                self._close_all(account, prices, self.settings.slippage_rate)
+            if drawdown(account.peak, equity) >= self.settings.max_drawdown:
+                self._close_all(account, prices, float(self.settings.slippage_rate))
                 account.hard_locked = True
+            if daily_limit_breached(account.day_start, equity, self.settings.daily_loss_limit):
+                self._close_all(account, prices, float(self.settings.slippage_rate))
+                if not account.daily_locked:
+                    account.daily_limit_hits += 1
                 account.daily_locked = True
 
-            if not account.daily_locked and not account.hard_locked and not session_closed:
-                candidates: list[tuple[float, str, int, pd.Series]] = []
+            if not account.hard_locked and not account.daily_locked and not session_closed:
                 for pair, bar in bars.items():
-                    signal = int(bar["SIGNAL"])
-                    if not signal or (signal < 0 and not spec.short_allowed):
+                    if pair in account.positions or len(account.positions) >= self.settings.max_positions:
                         continue
-                    strength = float(bar.get("EMA_STRENGTH", 0) or 0)
-                    candidates.append((strength, pair, signal, bar))
-                candidates.sort(reverse=True)
-                for _, pair, direction, bar in candidates:
-                    if len(account.positions) >= self.settings.max_open_positions:
-                        break
-                    if account.trades_today >= self.settings.max_trades_per_day:
-                        break
-                    if pair in account.positions or account.cooldowns.get(pair, timestamp) > timestamp:
+                    cooldown = account.cooldowns.get(pair)
+                    if cooldown is not None and timestamp < cooldown:
                         continue
-                    self._open(account, spec, pair, direction, bar, constraints[pair], prices)
+                    direction = int(bar["Signal"])
+                    if direction == 0 or (direction < 0 and not spec.allow_short):
+                        continue
+                    price = float(bar["Close"])
+                    stop = stop_distance(bar, self.settings)
+                    if not math.isfinite(stop) or stop <= 0:
+                        continue
+                    current_equity = self._equity(account, prices)
+                    open_risk = sum(float(item["initial_risk"]) for item in account.positions.values())
+                    sizing = calculate_position_size(
+                        equity=current_equity,
+                        price=price,
+                        stop_distance=stop,
+                        risk_fraction=self.settings.risk_per_trade,
+                        leverage=spec.max_leverage,
+                        current_open_risk=open_risk,
+                        max_open_risk_fraction=self.settings.max_open_risk,
+                    )
+                    constraint = constraints[pair]
+                    units = sizing.units
+                    notional = units * price
+                    if notional < constraint.min_order_value:
+                        continue
+                    if constraint.max_order_value is not None and notional > constraint.max_order_value:
+                        units = constraint.max_order_value / price
+                        notional = units * price
+                    if constraint.amount_step is not None and constraint.amount_step > 0:
+                        units = math.floor(units / constraint.amount_step) * constraint.amount_step
+                        notional = units * price
+                    if units <= 0 or notional < constraint.min_order_value:
+                        continue
+                    target = price + direction * stop * self.settings.reward_risk
+                    account.positions[pair] = {
+                        "direction": direction,
+                        "entry": price,
+                        "units": units,
+                        "stop": price - direction * stop,
+                        "target": target,
+                        "initial_risk": units * stop,
+                    }
+                    account.trades_today += 1
+                    account.max_positions = max(account.max_positions, len(account.positions))
 
             equity = self._equity(account, prices)
-            account.peak = max(account.peak, equity)
-            exposure = sum(
-                float(item["units"]) * prices.get(name, float(item["entry"]))
-                for name, item in account.positions.items()
-            )
-            if equity > 0:
-                account.max_effective_leverage = max(account.max_effective_leverage, exposure / equity)
-                utilization = margin_utilization(exposure, equity, spec.max_leverage)
-                account.max_margin_utilization = max(account.max_margin_utilization, utilization)
-                if exposure > 0:
-                    account.margin_utilization_sum += utilization
-                    account.margin_utilization_samples += 1
+            notional = sum(abs(float(item["units"]) * prices.get(pair, float(item["entry"]))) for pair, item in account.positions.items())
+            open_risk = sum(float(item["initial_risk"]) for item in account.positions.values())
+            effective_leverage = notional / equity if equity > 0 else 0.0
+            utilization = margin_utilization(notional, equity, spec.max_leverage)
+            account.max_open_risk = max(account.max_open_risk, open_risk)
+            account.max_effective_leverage = max(account.max_effective_leverage, effective_leverage)
+            account.max_margin_utilization = max(account.max_margin_utilization, utilization)
+            account.margin_utilization_sum += utilization
+            account.margin_utilization_samples += 1
             if step % 4 == 0 or step == len(timestamps) - 1:
-                account.curve.append(
-                    {
-                        "date": pd.Timestamp(timestamp).isoformat(),
-                        "equity": round(equity, 4),
-                        "drawdown": round(drawdown(account.peak, equity), 6),
-                    }
-                )
+                account.curve.append({"time": pd.Timestamp(timestamp).isoformat(), "equity": round(equity, 2)})
 
-        self._close_all(account, prices, self.settings.slippage_rate)
+        self._close_all(account, prices, float(self.settings.slippage_rate))
         final_equity = account.balance
-        if account.curve:
-            account.curve[-1]["equity"] = round(final_equity, 4)
-        diagnostics = _trade_diagnostics(account)
+        return self._serialize(spec, account, final_equity)
+
+    def _close(self, account: SimAccount, pair: str, price: float) -> bool:
+        position = account.positions.pop(pair)
+        direction = int(position["direction"])
+        entry = float(position["entry"])
+        units = float(position["units"])
+        fee = (entry + price) * units * self.settings.fee_rate
+        pnl = direction * units * (price - entry) - fee
+        account.balance += pnl
+        account.trade_pnls.append(pnl)
+        account.pair_trade_pnls.setdefault(pair, []).append(pnl)
+        if direction > 0:
+            account.long_trade_pnls.append(pnl)
+            account.pair_long_trade_pnls.setdefault(pair, []).append(pnl)
+        else:
+            account.short_trade_pnls.append(pnl)
+            account.pair_short_trade_pnls.setdefault(pair, []).append(pnl)
+        return pnl > 0
+
+    def _close_all(self, account: SimAccount, prices: dict[str, float], slippage: float) -> None:
+        for pair, position in list(account.positions.items()):
+            price = prices.get(pair, float(position["entry"]))
+            direction = int(position["direction"])
+            execution = price * (1 - slippage) if direction > 0 else price * (1 + slippage)
+            won = self._close(account, pair, execution)
+            account.trades += 1
+            account.wins += int(won)
+
+    @staticmethod
+    def _equity(account: SimAccount, prices: dict[str, float]) -> float:
+        equity = account.balance
+        for pair, position in account.positions.items():
+            direction = int(position["direction"])
+            equity += direction * float(position["units"]) * (
+                prices.get(pair, float(position["entry"])) - float(position["entry"])
+            )
+        return equity
+
+    def _serialize(self, spec: StrategySpec, account: SimAccount, equity: float) -> dict[str, Any]:
+        losses = [value for value in account.trade_pnls if value < 0]
+        gains = [value for value in account.trade_pnls if value > 0]
+        pair_stats = []
+        for pair in sorted(account.pair_trade_pnls):
+            pnls = account.pair_trade_pnls[pair]
+            long_pnls = account.pair_long_trade_pnls.get(pair, [])
+            short_pnls = account.pair_short_trade_pnls.get(pair, [])
+            pair_stats.append(
+                {
+                    "pair": pair,
+                    "trades": len(pnls),
+                    "wins": sum(value > 0 for value in pnls),
+                    "win_rate_pct": round(sum(value > 0 for value in pnls) / len(pnls) * 100, 2),
+                    "pnl": round(sum(pnls), 2),
+                    "avg_pnl": round(sum(pnls) / len(pnls), 2),
+                    "long_trades": len(long_pnls),
+                    "long_pnl": round(sum(long_pnls), 2),
+                    "short_trades": len(short_pnls),
+                    "short_pnl": round(sum(short_pnls), 2),
+                }
+            )
+        pair_stats.sort(key=lambda item: (item["pnl"], item["trades"]), reverse=True)
         return {
-            "strategy_id": spec.strategy_id,
-            "label": spec.label,
+            "id": spec.strategy_id,
+            "name": spec.name,
             "color": spec.color,
-            "max_leverage": spec.max_leverage,
-            "final_equity": round(final_equity, 2),
-            "total_return_pct": round((final_equity / self.settings.starting_capital - 1) * 100, 2),
-            "max_drawdown_pct": round(
-                max((point["drawdown"] for point in account.curve), default=0) * 100, 2
-            ),
+            "equity": round(equity, 2),
+            "return_pct": round((equity / self.settings.starting_capital - 1) * 100, 3),
+            "max_drawdown_pct": round(self._max_drawdown(account.curve) * 100, 3),
             "trades": account.trades,
-            "win_rate_pct": round(account.wins / account.trades * 100, 1) if account.trades else 0.0,
+            "wins": account.wins,
+            "win_rate_pct": round(account.wins / account.trades * 100, 2) if account.trades else 0,
             "liquidations": account.liquidations,
             "daily_limit_hits": account.daily_limit_hits,
             "max_positions": account.max_positions,
             "max_open_risk": round(account.max_open_risk, 2),
             "max_effective_leverage": round(account.max_effective_leverage, 3),
             "max_margin_utilization_pct": round(account.max_margin_utilization * 100, 2),
-            "avg_margin_utilization_pct": round(
-                account.margin_utilization_sum / account.margin_utilization_samples * 100, 2
-            ) if account.margin_utilization_samples else 0.0,
-            **diagnostics,
-            "hard_locked": account.hard_locked,
-            "curve": _downsample(account.curve),
+            "avg_margin_utilization_pct": round(account.margin_utilization_sum / account.margin_utilization_samples * 100, 2) if account.margin_utilization_samples else 0,
+            "profit_factor": round(sum(gains) / abs(sum(losses)), 3) if losses else (None if gains else 0),
+            "expectancy": round(sum(account.trade_pnls) / account.trades, 2) if account.trades else 0,
+            "avg_win": round(sum(gains) / len(gains), 2) if gains else 0,
+            "avg_loss": round(sum(losses) / len(losses), 2) if losses else 0,
+            "largest_loss": round(min(losses), 2) if losses else 0,
+            "long_trades": len(account.long_trade_pnls),
+            "long_wins": sum(value > 0 for value in account.long_trade_pnls),
+            "long_pnl": round(sum(account.long_trade_pnls), 2),
+            "short_trades": len(account.short_trade_pnls),
+            "short_wins": sum(value > 0 for value in account.short_trade_pnls),
+            "short_pnl": round(sum(account.short_trade_pnls), 2),
+            "pair_stats": pair_stats,
+            "curve": account.curve,
         }
-
-    def _open(
-        self,
-        account: SimAccount,
-        spec: StrategySpec,
-        pair: str,
-        direction: int,
-        bar: pd.Series,
-        constraint: PairConstraint,
-        prices: dict[str, float],
-    ) -> None:
-        equity = self._equity(account, prices)
-        aggregate_risk = sum(float(item["initial_risk"]) for item in account.positions.values())
-        risk_budget = min(
-            equity * self.settings.risk_per_trade,
-            equity * self.settings.max_aggregate_risk - aggregate_risk,
-        )
-        exposure = sum(
-            float(item["units"]) * prices.get(name, float(item["entry"]))
-            for name, item in account.positions.items()
-        )
-        remaining = min(equity * spec.max_leverage - exposure, constraint.max_order_amount)
-        price = float(bar["Close"])
-        distance = stop_distance(
-            price=price,
-            atr=float(bar["ATR"]),
-            atr_multiple=self.settings.stop_atr_multiple,
-            minimum_stop_pct=self.settings.minimum_stop_pct,
-        )
-        if risk_budget <= 0 or remaining <= 0 or not math.isfinite(distance):
-            return
-        size = calculate_position_size(
-            equity=equity,
-            entry_price=price,
-            stop_distance=distance,
-            risk_rate=risk_budget / equity,
-            max_leverage=spec.max_leverage,
-            fee_rate=self.settings.fee_rate,
-            slippage_rate=self.settings.slippage_rate,
-            max_notional=remaining,
-        )
-        increment = max(constraint.size_increment, 1e-12)
-        units = math.floor(size.units / increment) * increment
-        if units <= 0 or units * price < constraint.min_order_amount:
-            return
-        fill = price * (1 + self.settings.slippage_rate * direction)
-        entry_fee = units * fill * self.settings.fee_rate
-        account.balance -= entry_fee
-        initial_risk = units * (
-            distance + price * 2 * (self.settings.fee_rate + self.settings.slippage_rate)
-        )
-        account.positions[pair] = {
-            "direction": direction,
-            "units": units,
-            "entry": fill,
-            "stop": fill - distance if direction > 0 else fill + distance,
-            "target": fill + direction * distance * self.settings.take_profit_r,
-            "entry_fee": entry_fee,
-            "initial_risk": initial_risk,
-        }
-        account.trades_today += 1
-        account.max_positions = max(account.max_positions, len(account.positions))
-        account.max_open_risk = max(
-            account.max_open_risk,
-            sum(float(item["initial_risk"]) for item in account.positions.values()),
-        )
-
-    def _close(self, account: SimAccount, pair: str, market_price: float) -> bool:
-        position = account.positions.pop(pair)
-        direction = int(position["direction"])
-        fill = market_price * (1 - self.settings.slippage_rate * direction)
-        units = float(position["units"])
-        exit_fee = units * fill * self.settings.fee_rate
-        gross = direction * units * (fill - float(position["entry"]))
-        net = gross - float(position["entry_fee"]) - exit_fee
-        account.balance += gross - exit_fee
-        account.trade_pnls.append(net)
-        account.pair_trade_pnls.setdefault(pair, []).append(net)
-        if direction > 0:
-            account.long_trade_pnls.append(net)
-            account.pair_long_trade_pnls.setdefault(pair, []).append(net)
-        else:
-            account.short_trade_pnls.append(net)
-            account.pair_short_trade_pnls.setdefault(pair, []).append(net)
-        return net > 0
-
-    def _close_all(self, account: SimAccount, prices: dict[str, float], slippage: float) -> None:
-        del slippage
-        for pair in list(account.positions):
-            if pair in prices:
-                won = self._close(account, pair, prices[pair])
-                account.trades += 1
-                account.wins += int(won)
 
     @staticmethod
-    def _equity(account: SimAccount, prices: dict[str, float]) -> float:
-        equity = account.balance
-        for pair, position in account.positions.items():
-            price = prices.get(pair, float(position["entry"]))
-            equity += int(position["direction"]) * float(position["units"]) * (
-                price - float(position["entry"])
-            )
-        return equity
+    def _max_drawdown(curve: list[dict[str, Any]]) -> float:
+        peak = 0.0
+        worst = 0.0
+        for point in curve:
+            equity = float(point["equity"])
+            peak = max(peak, equity)
+            if peak > 0:
+                worst = max(worst, (peak - equity) / peak)
+        return worst
 
-    def _benchmark(
-        self, frames: dict[str, pd.DataFrame], timestamps: list[pd.Timestamp]
-    ) -> dict[str, Any]:
-        allocation = self.settings.starting_capital / len(frames)
-        holdings: dict[str, tuple[float, float]] = {}
-        cash = self.settings.starting_capital
+    def _benchmark(self, frames: dict[str, pd.DataFrame], timestamps: list[pd.Timestamp]) -> dict[str, Any]:
+        allocations = self.settings.starting_capital / len(frames)
+        units: dict[str, float] = {}
         for pair, frame in frames.items():
-            entry = float(frame.iloc[0]["Close"]) * (1 + self.settings.slippage_rate)
-            budget = allocation / (1 + self.settings.fee_rate)
-            units = budget / entry
-            fee = units * entry * self.settings.fee_rate
-            cash -= units * entry + fee
-            holdings[pair] = (units, entry)
+            units[pair] = allocations / float(frame.iloc[0]["Close"])
         curve: list[dict[str, Any]] = []
-        peak = self.settings.starting_capital
-        for step, timestamp in enumerate(timestamps):
-            if step % 4 and step != len(timestamps) - 1:
-                continue
-            value = cash
-            for pair, (units, entry) in holdings.items():
-                frame = frames[pair]
-                available = frame.loc[:timestamp]
-                price = float(available.iloc[-1]["Close"]) if not available.empty else entry
-                value += units * price
-            peak = max(peak, value)
-            curve.append(
-                {
-                    "date": pd.Timestamp(timestamp).isoformat(),
-                    "equity": round(value, 4),
-                    "drawdown": round(drawdown(peak, value), 6),
-                }
-            )
-        final_value = cash
-        for pair, (units, _) in holdings.items():
-            exit_price = float(frames[pair].iloc[-1]["Close"]) * (1 - self.settings.slippage_rate)
-            final_value += units * exit_price * (1 - self.settings.fee_rate)
-        if curve:
-            curve[-1]["equity"] = round(final_value, 4)
+        for timestamp in timestamps:
+            equity = 0.0
+            for pair, frame in frames.items():
+                history = frame.loc[:timestamp]
+                if history.empty:
+                    equity += allocations
+                else:
+                    equity += units[pair] * float(history.iloc[-1]["Close"])
+            curve.append({"time": pd.Timestamp(timestamp).isoformat(), "equity": round(equity, 2)})
+        equity = curve[-1]["equity"]
         return {
-            "strategy_id": "benchmark",
-            "label": "Equal-weight hold",
-            "color": "#c7ccd8",
-            "max_leverage": 1.0,
-            "final_equity": round(final_value, 2),
-            "total_return_pct": round((final_value / self.settings.starting_capital - 1) * 100, 2),
-            "max_drawdown_pct": round(
-                max((point["drawdown"] for point in curve), default=0) * 100, 2
-            ),
+            "id": "benchmark",
+            "name": "Gleichgewichtet halten",
+            "color": "#c4cad5",
+            "equity": equity,
+            "return_pct": round((equity / self.settings.starting_capital - 1) * 100, 3),
+            "max_drawdown_pct": round(self._max_drawdown(curve) * 100, 3),
             "trades": len(frames),
+            "wins": None,
             "win_rate_pct": None,
             "liquidations": None,
             "daily_limit_hits": None,
             "max_positions": len(frames),
             "max_open_risk": None,
-            "max_effective_leverage": 1.0,
+            "max_effective_leverage": 1,
             "max_margin_utilization_pct": None,
             "avg_margin_utilization_pct": None,
             "profit_factor": None,
-            "expectancy_eur": None,
-            "average_win_eur": None,
-            "average_loss_eur": None,
-            "largest_loss_eur": None,
+            "expectancy": None,
+            "avg_win": None,
+            "avg_loss": None,
+            "largest_loss": None,
             "long_trades": None,
-            "long_win_rate_pct": None,
-            "long_pnl_eur": None,
+            "long_wins": None,
+            "long_pnl": None,
             "short_trades": None,
-            "short_win_rate_pct": None,
-            "short_pnl_eur": None,
-            "pair_attribution": [],
-            "hard_locked": False,
-            "curve": _downsample(curve),
+            "short_wins": None,
+            "short_pnl": None,
+            "pair_stats": [],
+            "curve": curve,
         }
-
-
-def _trade_diagnostics(account: SimAccount) -> dict[str, Any]:
-    wins = [value for value in account.trade_pnls if value > 0]
-    losses = [value for value in account.trade_pnls if value <= 0]
-    gross_profit = sum(wins)
-    gross_loss = abs(sum(losses))
-    profit_factor = gross_profit / gross_loss if gross_loss > 0 else (None if gross_profit == 0 else 999.0)
-
-    def side_stats(values: list[float]) -> tuple[int, float, float]:
-        count = len(values)
-        winners = sum(1 for value in values if value > 0)
-        return count, (winners / count * 100 if count else 0.0), sum(values)
-
-    long_count, long_win_rate, long_pnl = side_stats(account.long_trade_pnls)
-    short_count, short_win_rate, short_pnl = side_stats(account.short_trade_pnls)
-
-    pair_attribution = []
-    for pair in sorted(account.pair_trade_pnls):
-        values = account.pair_trade_pnls[pair]
-        pair_wins = [value for value in values if value > 0]
-        long_values = account.pair_long_trade_pnls.get(pair, [])
-        short_values = account.pair_short_trade_pnls.get(pair, [])
-        pair_attribution.append(
-            {
-                "pair": pair,
-                "trades": len(values),
-                "wins": len(pair_wins),
-                "win_rate_pct": round(len(pair_wins) / len(values) * 100, 1) if values else 0.0,
-                "pnl_eur": round(sum(values), 2),
-                "average_pnl_eur": round(sum(values) / len(values), 3) if values else 0.0,
-                "long_trades": len(long_values),
-                "long_pnl_eur": round(sum(long_values), 2),
-                "short_trades": len(short_values),
-                "short_pnl_eur": round(sum(short_values), 2),
-            }
-        )
-    pair_attribution.sort(key=lambda item: (-item["pnl_eur"], item["pair"]))
-
-    return {
-        "profit_factor": round(profit_factor, 3) if profit_factor is not None else None,
-        "expectancy_eur": round(sum(account.trade_pnls) / len(account.trade_pnls), 3)
-        if account.trade_pnls else 0.0,
-        "average_win_eur": round(gross_profit / len(wins), 3) if wins else 0.0,
-        "average_loss_eur": round(sum(losses) / len(losses), 3) if losses else 0.0,
-        "largest_loss_eur": round(min(losses), 3) if losses else 0.0,
-        "long_trades": long_count,
-        "long_win_rate_pct": round(long_win_rate, 1),
-        "long_pnl_eur": round(long_pnl, 2),
-        "short_trades": short_count,
-        "short_win_rate_pct": round(short_win_rate, 1),
-        "short_pnl_eur": round(short_pnl, 2),
-        "pair_attribution": pair_attribution,
-    }
-
-
-def _downsample(points: list[dict[str, Any]], maximum: int = 500) -> list[dict[str, Any]]:
-    if len(points) <= maximum:
-        return points
-    step = math.ceil(len(points) / maximum)
-    sampled = points[::step]
-    if sampled[-1] != points[-1]:
-        sampled.append(points[-1])
-    return sampled
