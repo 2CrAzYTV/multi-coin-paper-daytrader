@@ -21,7 +21,6 @@ class ReleaseAssetTests(unittest.TestCase):
         )
         extra = root.findtext("ExtraParams") or ""
         for required in (
-            "--env-file=/mnt/user/appdata/paper-trading-bot/.env",
             "--user=99:100",
             "--read-only",
             "--init",
@@ -33,20 +32,46 @@ class ReleaseAssetTests(unittest.TestCase):
             "--stop-timeout=20",
         ):
             self.assertIn(required, extra)
+        self.assertNotIn("--env-file=", extra)
+
         configs = root.findall("Config")
-        variable_targets = {
-            item.attrib["Target"] for item in configs if item.attrib["Type"] == "Variable"
+        variables = {
+            item.attrib["Target"]: item for item in configs if item.attrib["Type"] == "Variable"
         }
-        self.assertEqual(variable_targets, {"TZ"})
+        required_defaults = {
+            "APP_LANGUAGE": "de",
+            "DATA_SOURCE": "demo",
+            "STARTING_CAPITAL": "1000",
+            "RISK_PER_TRADE": "0.005",
+            "MAX_AGGREGATE_RISK": "0.01",
+            "MAX_DAILY_LOSS": "0.02",
+            "MAX_OPEN_POSITIONS": "2",
+            "MAX_TRADES_PER_DAY": "3",
+            "PAIRS": "BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR",
+            "CANDLE_INTERVAL": "15m",
+            "TREND_INTERVAL": "1h",
+            "PAPER_ONLY": "true",
+            "APP_TIMEZONE": "Europe/Berlin",
+            "TZ": "Europe/Berlin",
+            "DATA_DIR": "/data",
+        }
+        for target, expected in required_defaults.items():
+            self.assertIn(target, variables)
+            self.assertEqual(variables[target].attrib["Default"], expected)
+
+        self.assertIn("FUSION_READ_API_KEY", variables)
+        self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Mask"], "true")
         self.assertEqual(
             {item.attrib["Target"] for item in configs if item.attrib["Type"] == "Path"},
             {"/data"},
         )
+
         overview = root.findtext("Overview") or ""
         requires = root.findtext("Requires") or ""
-        for guidance in ("PAPER_ONLY=true", "APP_LANGUAGE=en or de", "DATA_SOURCE=demo or fusion"):
-            self.assertIn(guidance, overview)
-            self.assertIn(guidance, requires)
+        self.assertIn("separate .env file is not required", overview)
+        self.assertIn("PAPER_ONLY=true", requires)
+        self.assertIn("0.5% risk per trade", requires)
+        self.assertIn("2% maximum daily loss", requires)
 
     def test_unraid_icon_is_high_resolution_transparent_png(self):
         icon = (ROOT / "unraid/multi-coin-paper-daytrader.png").read_bytes()
@@ -75,8 +100,9 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("latest completed 15-minute Fusion candle", guide)
         self.assertIn("Reset my paper accounts → Delete paper data", guide)
         self.assertIn("--pids-limit=2048", guide)
-        self.assertIn("APP_LANGUAGE=en", guide)
-        self.assertIn("override the value from my `.env` file", guide)
+        self.assertIn("APP_LANGUAGE=de", guide)
+        self.assertIn("separate `.env` file is not required", guide)
+        self.assertIn("locally saved template", guide)
         self.assertNotIn("docker login ghcr.io", guide)
 
     def test_public_facing_assets_are_english(self):
