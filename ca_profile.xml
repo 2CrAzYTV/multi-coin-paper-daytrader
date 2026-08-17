@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CommunityApplications>
-  <Profile>Multi-Coin Paper Daytrader is a paper-only crypto trading simulator for Unraid. It compares long-only and long/short strategies across BTC-EUR, ETH-EUR, SOL-EUR, XRP-EUR and ADA-EUR using shared portfolio risk controls. It starts safely with deterministic demo data and can optionally read current Bitpanda Fusion market data with a Read-only API key. The application cannot place real-money orders. Support and issue tracking are available in the project repository.</Profile>
+  <Profile>Multi-Coin Paper Daytrader is a paper-only crypto trading simulator for Unraid. It compares long-only and long/short strategies across BTC-EUR, ETH-EUR, SOL-EUR, XRP-EUR and ADA-EUR using shared portfolio risk controls. It starts safely with deterministic demo data and can optionally read current Bitpanda Fusion market data with a Read-only API key. The application cannot place real-money orders, does not provide personalized investment advice, and makes no profit or return guarantee. Strategy outputs are simulated paper signals only. The project is not affiliated with or endorsed by Bitpanda. Support and issue tracking are available in the project repository.</Profile>
   <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.png</Icon>
   <WebPage>https://github.com/2CrAzYTV/multi-coin-paper-daytrader</WebPage>
   <Forum>https://github.com/2CrAzYTV/multi-coin-paper-daytrader/issues</Forum>
