@@ -33,9 +33,10 @@
   <Config Name="Maximum Daily Loss" Target="MAX_DAILY_LOSS" Default="0.02" Mode="" Description="0.02 = 2%." Type="Variable" Display="always" Required="true" Mask="false">0.02</Config>
   <Config Name="Maximum Open Positions" Target="MAX_OPEN_POSITIONS" Default="2" Mode="" Description="Maximum simultaneous paper positions." Type="Variable" Display="always" Required="true" Mask="false">2</Config>
   <Config Name="Maximum Trades per Day" Target="MAX_TRADES_PER_DAY" Default="3" Mode="" Description="Maximum new paper trades per day." Type="Variable" Display="always" Required="true" Mask="false">3</Config>
-  <Config Name="Trading Pairs" Target="PAIRS" Default="BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR" Mode="" Description="Comma-separated EUR pairs." Type="Variable" Display="always" Required="true" Mask="false">BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR</Config>
+  <Config Name="Trading Pairs" Target="PAIRS" Default="BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR,LINK-EUR,AVAX-EUR,SUI-EUR,TAO-EUR,DOGE-EUR" Mode="" Description="Comma-separated EUR research pairs. Fusion validates availability dynamically." Type="Variable" Display="always" Required="true" Mask="false">BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR,LINK-EUR,AVAX-EUR,SUI-EUR,TAO-EUR,DOGE-EUR</Config>
   <Config Name="Candle Interval" Target="CANDLE_INTERVAL" Default="15m" Mode="" Description="Primary strategy candle interval." Type="Variable" Display="always" Required="true" Mask="false">15m</Config>
   <Config Name="Trend Interval" Target="TREND_INTERVAL" Default="1h" Mode="" Description="Higher-timeframe trend interval." Type="Variable" Display="always" Required="true" Mask="false">1h</Config>
+  <Config Name="Backtest Bars" Target="BACKTEST_BARS" Default="5000" Mode="" Description="Research horizon used by the multi-coin backtest. Maximum 5000 bars." Type="Variable" Display="always" Required="true" Mask="false">5000</Config>
 
   <Config Name="Paper Only Safety Lock" Target="PAPER_ONLY" Default="true" Mode="" Description="Must remain true." Type="Variable" Display="advanced" Required="true" Mask="false">true</Config>
   <Config Name="Hard Drawdown Limit" Target="HARD_DRAWDOWN" Default="0.10" Mode="" Description="0.10 = 10%." Type="Variable" Display="advanced" Required="true" Mask="false">0.10</Config>
@@ -60,7 +61,6 @@
   <Config Name="Take Profit R" Target="TAKE_PROFIT_R" Default="2.0" Mode="" Description="Take-profit target in R multiples." Type="Variable" Display="advanced" Required="true" Mask="false">2.0</Config>
   <Config Name="Trailing Trigger R" Target="TRAILING_TRIGGER_R" Default="1.0" Mode="" Description="R multiple that activates trailing logic." Type="Variable" Display="advanced" Required="true" Mask="false">1.0</Config>
   <Config Name="History Bars" Target="HISTORY_BARS" Default="500" Mode="" Description="Bars loaded for strategy calculations." Type="Variable" Display="advanced" Required="true" Mask="false">500</Config>
-  <Config Name="Backtest Bars" Target="BACKTEST_BARS" Default="1000" Mode="" Description="Bars used by the backtest." Type="Variable" Display="advanced" Required="true" Mask="false">1000</Config>
   <Config Name="Poll Interval Seconds" Target="POLL_SECONDS" Default="60" Mode="" Description="Scanner interval." Type="Variable" Display="advanced" Required="true" Mask="false">60</Config>
   <Config Name="Session Close Hour" Target="SESSION_CLOSE_HOUR" Default="23" Mode="" Description="Daily close hour." Type="Variable" Display="advanced" Required="true" Mask="false">23</Config>
   <Config Name="Session Close Minute" Target="SESSION_CLOSE_MINUTE" Default="45" Mode="" Description="Daily close minute." Type="Variable" Display="advanced" Required="true" Mask="false">45</Config>
