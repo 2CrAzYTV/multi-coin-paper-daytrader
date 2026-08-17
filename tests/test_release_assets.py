@@ -39,21 +39,44 @@ class ReleaseAssetTests(unittest.TestCase):
             item.attrib["Target"]: item for item in configs if item.attrib["Type"] == "Variable"
         }
         required_defaults = {
-            "APP_LANGUAGE": "de",
-            "DATA_SOURCE": "demo",
+            "PAPER_ONLY": "true",
             "STARTING_CAPITAL": "1000",
             "RISK_PER_TRADE": "0.005",
             "MAX_AGGREGATE_RISK": "0.01",
             "MAX_DAILY_LOSS": "0.02",
+            "HARD_DRAWDOWN": "0.10",
             "MAX_OPEN_POSITIONS": "2",
             "MAX_TRADES_PER_DAY": "3",
+            "FEE_RATE": "0.001",
+            "SLIPPAGE_RATE": "0.0005",
             "PAIRS": "BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR",
             "CANDLE_INTERVAL": "15m",
             "TREND_INTERVAL": "1h",
-            "PAPER_ONLY": "true",
+            "FAST_WINDOW": "9",
+            "SLOW_WINDOW": "21",
+            "TREND_FAST_WINDOW": "20",
+            "TREND_SLOW_WINDOW": "50",
+            "ATR_WINDOW": "14",
+            "RSI_WINDOW": "14",
+            "STOP_ATR_MULTIPLE": "1.5",
+            "MINIMUM_STOP_PCT": "0.006",
+            "TAKE_PROFIT_R": "2.0",
+            "TRAILING_TRIGGER_R": "1.0",
+            "HISTORY_BARS": "500",
+            "BACKTEST_BARS": "1000",
+            "DATA_SOURCE": "demo",
+            "FUSION_BASE_URL": "https://api.fusion.bitpanda.com",
             "APP_TIMEZONE": "Europe/Berlin",
-            "TZ": "Europe/Berlin",
+            "POLL_SECONDS": "60",
+            "SESSION_CLOSE_HOUR": "23",
+            "SESSION_CLOSE_MINUTE": "45",
+            "COOLDOWN_MINUTES": "45",
+            "APP_LANGUAGE": "de",
             "DATA_DIR": "/data",
+            "WEB_PORT": "8787",
+            "PUID": "99",
+            "PGID": "100",
+            "TZ": "Europe/Berlin",
         }
         for target, expected in required_defaults.items():
             self.assertIn(target, variables)
@@ -61,6 +84,8 @@ class ReleaseAssetTests(unittest.TestCase):
 
         self.assertIn("FUSION_READ_API_KEY", variables)
         self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Mask"], "true")
+        self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Default"], "")
+        self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Name"], "Bitpanda Key")
         self.assertEqual(
             {item.attrib["Target"] for item in configs if item.attrib["Type"] == "Path"},
             {"/data"},
