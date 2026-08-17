@@ -17,7 +17,13 @@ from .risk import (
     estimate_liquidation_price,
     margin_utilization,
 )
-from .strategies import add_entry_indicators, add_trend_indicators, stop_distance
+from .strategies import (
+    add_entry_indicators,
+    add_signal_columns,
+    add_trend_indicators,
+    should_exit,
+    stop_distance,
+)
 
 
 @dataclass
@@ -85,6 +91,7 @@ class Backtester:
             "strategies": results,
             "benchmark": benchmark,
             "liquidation_model": "paper-isolated-margin-estimate",
+            "signal_model": "quality-filtered-ema-trend-v2",
         }
 
     def _prepare(self, frame: pd.DataFrame) -> pd.DataFrame:
@@ -93,29 +100,7 @@ class Backtester:
             {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
         ).dropna()
         trend = add_trend_indicators(hourly, self.settings)
-        entry["TREND_FAST"] = trend["TREND_FAST"].reindex(entry.index, method="ffill")
-        entry["TREND_SLOW"] = trend["TREND_SLOW"].reindex(entry.index, method="ffill")
-        previous_fast = entry["EMA_FAST"].shift(1)
-        previous_slow = entry["EMA_SLOW"].shift(1)
-        volume_ok = entry["Volume"] >= entry["VOLUME_MEDIAN"].fillna(0) * 0.8
-        long_setup = (
-            (previous_fast <= previous_slow)
-            & (entry["EMA_FAST"] > entry["EMA_SLOW"])
-            & (entry["TREND_FAST"] > entry["TREND_SLOW"])
-            & entry["RSI"].between(45, 70)
-            & volume_ok
-        )
-        short_setup = (
-            (previous_fast >= previous_slow)
-            & (entry["EMA_FAST"] < entry["EMA_SLOW"])
-            & (entry["TREND_FAST"] < entry["TREND_SLOW"])
-            & entry["RSI"].between(30, 55)
-            & volume_ok
-        )
-        entry["SIGNAL"] = 0
-        entry.loc[long_setup, "SIGNAL"] = 1
-        entry.loc[short_setup, "SIGNAL"] = -1
-        return entry
+        return add_signal_columns(entry, trend, self.settings)
 
     def _run_strategy(
         self,
@@ -176,9 +161,11 @@ class Backtester:
                     exit_price = float(position["target"])
                 elif session_closed:
                     exit_price = float(bar["Close"])
-                elif direction > 0 and float(bar["EMA_FAST"]) < float(bar["EMA_SLOW"]):
-                    exit_price = float(bar["Close"])
-                elif direction < 0 and float(bar["EMA_FAST"]) > float(bar["EMA_SLOW"]):
+                elif should_exit(
+                    direction,
+                    frames[pair].loc[:timestamp],
+                    self.settings.exit_confirmation_bars,
+                ):
                     exit_price = float(bar["Close"])
                 if exit_price is not None:
                     won = self._close(account, pair, exit_price)
@@ -215,12 +202,7 @@ class Backtester:
                     signal = int(bar["SIGNAL"])
                     if not signal or (signal < 0 and not spec.short_allowed):
                         continue
-                    atr = float(bar["ATR"])
-                    strength = (
-                        abs(float(bar["EMA_FAST"]) - float(bar["EMA_SLOW"])) / atr
-                        if atr > 0 and math.isfinite(atr)
-                        else 0.0
-                    )
+                    strength = float(bar.get("EMA_STRENGTH", 0) or 0)
                     candidates.append((strength, pair, signal, bar))
                 candidates.sort(reverse=True)
                 for _, pair, direction, bar in candidates:
