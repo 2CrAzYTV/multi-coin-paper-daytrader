@@ -62,8 +62,6 @@ async def lifespan(_: FastAPI):
                 f"Automatic Fusion coin scan selected {len(pairs)} active EUR pairs.",
             )
         except Exception as exc:
-            # A temporary discovery failure must not make the dashboard unavailable.
-            # Manual scans/backtests retry discovery before they run.
             repository.add_event(
                 "warning",
                 None,
@@ -164,12 +162,16 @@ async def run_backtest(request: BacktestRequest) -> dict:
     try:
         await asyncio.to_thread(_refresh_coin_universe)
         result = await asyncio.to_thread(backtester.run, request.bars)
+        skipped_pairs = result.get("skipped_pairs", {})
+        failures = result.get("failures", {})
         result["coin_scan"] = {
             "automatic": settings.data_source == "fusion" and _auto_coin_scan_requested(),
             "discovered_pairs": list(settings.pairs),
             "discovered_count": len(settings.pairs),
-            "failed_count": len(result.get("failures", {})),
+            "failed_count": len(failures),
+            "skipped_count": len(skipped_pairs),
             "usable_count": len(result.get("pairs", [])),
+            "minimum_history_bars": result.get("minimum_history_bars"),
         }
         return result
     except MarketDataError as exc:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import pandas as pd
@@ -19,23 +20,50 @@ class WalkForwardBacktester(Backtester):
 
     TRAIN_FRACTION = 0.60
     SELECTOR_SIZES = (10, 7, 5, 3)
+    MIN_RESEARCH_BARS = 1_000
+    MIN_HISTORY_COVERAGE = 0.80
+
+    @classmethod
+    def required_history_bars(cls, selected_bars: int) -> int:
+        """Require enough history for a meaningful train/validation split.
+
+        For the normal 5,000-candle research horizon this requires at least
+        4,000 usable candles. Shorter research runs still require at least 1,000
+        candles when the requested horizon allows it.
+        """
+        coverage_target = math.ceil(selected_bars * cls.MIN_HISTORY_COVERAGE)
+        return min(selected_bars, max(cls.MIN_RESEARCH_BARS, coverage_target))
 
     def run(self, bars: int | None = None) -> dict[str, Any]:
         selected_bars = min(5_000, bars or self.settings.backtest_bars)
+        minimum_history = self.required_history_bars(selected_bars)
         constraints = self.market.pair_constraints()
         frames: dict[str, pd.DataFrame] = {}
         failures: dict[str, str] = {}
+        skipped: dict[str, str] = {}
+        history_counts: dict[str, int] = {}
         for pair in self.settings.pairs:
             if pair not in constraints:
-                failures[pair] = "not active"
+                skipped[pair] = "not active"
                 continue
             try:
                 frame = self.market.history(pair, self.settings.candle_interval, selected_bars)
+                history_counts[pair] = len(frame)
+                if len(frame) < minimum_history:
+                    skipped[pair] = (
+                        f"insufficient history: {len(frame)} candles; "
+                        f"at least {minimum_history} required"
+                    )
+                    continue
                 frames[pair] = self._prepare(frame)
+            except MarketDataError as exc:
+                skipped[pair] = str(exc)
             except Exception as exc:
                 failures[pair] = str(exc)
         if not frames:
-            raise MarketDataError("I found no pair available for the multi-coin backtest.")
+            raise MarketDataError(
+                "I found no pair with enough historical data for the multi-coin backtest."
+            )
 
         timestamps = sorted(set().union(*(set(frame.index) for frame in frames.values())))
         results = [self._run_strategy(spec, frames, constraints, timestamps) for spec in STRATEGIES]
@@ -45,6 +73,10 @@ class WalkForwardBacktester(Backtester):
             "status": "ok",
             "pairs": sorted(frames),
             "failures": failures,
+            "skipped_pairs": skipped,
+            "history_counts": history_counts,
+            "minimum_history_bars": minimum_history,
+            "requested_bars": selected_bars,
             "from": pd.Timestamp(timestamps[0]).isoformat(),
             "to": pd.Timestamp(timestamps[-1]).isoformat(),
             "bars": len(timestamps),
@@ -83,8 +115,6 @@ class WalkForwardBacktester(Backtester):
             pnl = float(row.get("pnl_eur", 0.0) or 0.0)
             win_rate = float(row.get("win_rate_pct", 0.0) or 0.0)
             average_pnl = float(row.get("average_pnl_eur", 0.0) or 0.0)
-            # P/L is the dominant ranking signal. Tiny tie-breakers reward evidence
-            # from actual trades without allowing win rate to overpower money P/L.
             score = pnl + min(trades, 20) * 0.01 + average_pnl * 0.001 + win_rate * 0.0001
             ranking.append(
                 {
