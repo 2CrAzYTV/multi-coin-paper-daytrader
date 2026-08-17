@@ -53,6 +53,14 @@ class Settings:
     trend_slow_window: int = 50
     atr_window: int = 14
     rsi_window: int = 14
+    signal_min_strength: float = 0.12
+    trend_min_strength_pct: float = 0.001
+    volume_multiplier: float = 1.0
+    long_rsi_min: float = 48.0
+    long_rsi_max: float = 64.0
+    short_rsi_min: float = 36.0
+    short_rsi_max: float = 52.0
+    exit_confirmation_bars: int = 2
     stop_atr_multiple: float = 1.5
     minimum_stop_pct: float = 0.006
     take_profit_r: float = 2.0
@@ -98,6 +106,14 @@ class Settings:
             trend_slow_window=_as_int("TREND_SLOW_WINDOW", 50),
             atr_window=_as_int("ATR_WINDOW", 14),
             rsi_window=_as_int("RSI_WINDOW", 14),
+            signal_min_strength=_as_float("SIGNAL_MIN_STRENGTH", 0.12),
+            trend_min_strength_pct=_as_float("TREND_MIN_STRENGTH_PCT", 0.001),
+            volume_multiplier=_as_float("VOLUME_MULTIPLIER", 1.0),
+            long_rsi_min=_as_float("LONG_RSI_MIN", 48.0),
+            long_rsi_max=_as_float("LONG_RSI_MAX", 64.0),
+            short_rsi_min=_as_float("SHORT_RSI_MIN", 36.0),
+            short_rsi_max=_as_float("SHORT_RSI_MAX", 52.0),
+            exit_confirmation_bars=_as_int("EXIT_CONFIRMATION_BARS", 2),
             stop_atr_multiple=_as_float("STOP_ATR_MULTIPLE", 1.5),
             minimum_stop_pct=_as_float("MINIMUM_STOP_PCT", 0.006),
             take_profit_r=_as_float("TAKE_PROFIT_R", 2.0),
@@ -136,8 +152,7 @@ class Settings:
             raise ValueError("I require RISK_PER_TRADE to be greater than 0 and no more than 0.01.")
         if not self.risk_per_trade <= self.max_aggregate_risk <= 0.02:
             raise ValueError(
-                "I require MAX_AGGREGATE_RISK to be between the per-trade "
-                "risk and 0.02."
+                "I require MAX_AGGREGATE_RISK to be between the per-trade risk and 0.02."
             )
         if not self.max_aggregate_risk <= self.max_daily_loss <= 0.02:
             raise ValueError("I require MAX_DAILY_LOSS to be between aggregate risk and 0.02.")
@@ -151,6 +166,18 @@ class Settings:
             raise ValueError("I require FAST_WINDOW to be smaller than SLOW_WINDOW.")
         if not 2 <= self.trend_fast_window < self.trend_slow_window:
             raise ValueError("I require TREND_FAST_WINDOW to be smaller than TREND_SLOW_WINDOW.")
+        if not 0 <= self.signal_min_strength <= 2:
+            raise ValueError("I require SIGNAL_MIN_STRENGTH to be between 0 and 2.")
+        if not 0 <= self.trend_min_strength_pct <= 0.05:
+            raise ValueError("I require TREND_MIN_STRENGTH_PCT to be between 0 and 0.05.")
+        if not 0.5 <= self.volume_multiplier <= 3:
+            raise ValueError("I require VOLUME_MULTIPLIER to be between 0.5 and 3.")
+        if not 0 <= self.long_rsi_min < self.long_rsi_max <= 100:
+            raise ValueError("I received invalid long RSI bounds.")
+        if not 0 <= self.short_rsi_min < self.short_rsi_max <= 100:
+            raise ValueError("I received invalid short RSI bounds.")
+        if not 1 <= self.exit_confirmation_bars <= 4:
+            raise ValueError("I require EXIT_CONFIRMATION_BARS to be between 1 and 4.")
         if (
             self.candle_interval not in ALLOWED_INTERVALS
             or self.trend_interval not in ALLOWED_INTERVALS
@@ -160,8 +187,7 @@ class Settings:
             raise ValueError("I require DATA_SOURCE to be either fusion or demo.")
         if self.data_source == "fusion" and not self.fusion_read_api_key:
             raise ValueError(
-                "I require FUSION_READ_API_KEY for Fusion data and accept a "
-                "Bitpanda key with Read permission only."
+                "I require FUSION_READ_API_KEY for Fusion data and accept a Bitpanda key with Read permission only."
             )
         if not 60 <= self.history_bars <= 1_000 or not 100 <= self.backtest_bars <= 5_000:
             raise ValueError("I received HISTORY_BARS or BACKTEST_BARS outside the safety limits.")
