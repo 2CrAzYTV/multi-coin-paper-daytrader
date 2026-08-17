@@ -62,6 +62,38 @@ class RiskTests(unittest.TestCase):
         )
         self.assertAlmostEqual(result.notional, 300)
 
+    def test_entry_cost_reserve_keeps_one_x_below_full_margin(self):
+        result = calculate_position_size(
+            equity=1_000,
+            entry_price=100,
+            stop_distance=0.01,
+            risk_rate=1.0,
+            max_leverage=1,
+            fee_rate=0.001,
+            slippage_rate=0.0005,
+            max_notional=1_000,
+        )
+        post_fee_equity = 1_000 - result.notional * 0.001
+        marked_notional = result.notional * 1.0005
+        self.assertLessEqual(marked_notional / post_fee_equity, 1.0 + 1e-9)
+        self.assertLessEqual(margin_utilization(marked_notional, post_fee_equity, 1), 1.0 + 1e-9)
+
+    def test_entry_cost_reserve_scales_with_leverage(self):
+        result = calculate_position_size(
+            equity=1_000,
+            entry_price=100,
+            stop_distance=0.01,
+            risk_rate=1.0,
+            max_leverage=10,
+            fee_rate=0.001,
+            slippage_rate=0.0005,
+            max_notional=10_000,
+        )
+        post_fee_equity = 1_000 - result.notional * 0.001
+        marked_notional = result.notional * 1.0005
+        self.assertLessEqual(marked_notional / post_fee_equity, 10.0 + 1e-9)
+        self.assertLessEqual(margin_utilization(marked_notional, post_fee_equity, 10), 1.0 + 1e-9)
+
     def test_margin_math(self):
         self.assertAlmostEqual(margin_required(5_000, 10), 500)
         self.assertAlmostEqual(margin_utilization(5_000, 1_000, 10), 0.5)
