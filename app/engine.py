@@ -348,7 +348,7 @@ class PaperEngine:
         if daily_limit_breached(
             float(portfolio["day_start_equity"]), equity, self.settings.max_daily_loss
         ):
-            self._close_all(account=portfolio if False else portfolio, positions=positions, prices=prices, now=now, reason="2% daily limit")
+            self._close_all(portfolio, positions, prices, now, "2% daily limit")
             portfolio["daily_locked"] = 1
             events.append("I activated the daily limit")
             self.repository.add_event(
