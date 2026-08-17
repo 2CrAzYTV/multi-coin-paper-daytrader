@@ -11,9 +11,9 @@ from app.walk_forward import WalkForwardBacktester
 class StubSelectorBacktester(WalkForwardBacktester):
     def _run_strategy(self, spec, frames, constraints, timestamps):
         pairs = list(frames)
-        # Training call contains the full 10-pair universe. Give each pair a
-        # deterministic descending P/L so the selector ranking is testable.
-        if len(pairs) == 10:
+        # The training slice has 300 bars. Give each pair a deterministic
+        # descending P/L so the selector ranking is testable.
+        if len(timestamps) == 300:
             attribution = []
             for index, pair in enumerate(sorted(pairs)):
                 attribution.append(
@@ -31,6 +31,7 @@ class StubSelectorBacktester(WalkForwardBacktester):
         size = len(pairs)
         # Make Top-5 the validation winner after return/drawdown scoring.
         metrics = {
+            10: (0.5, 2.5, 10, 0.9),
             7: (1.0, 2.0, 8, 1.1),
             5: (3.0, 1.0, 7, 1.5),
             3: (2.0, 1.0, 5, 1.4),
