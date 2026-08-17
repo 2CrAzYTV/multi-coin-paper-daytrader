@@ -10,7 +10,13 @@ import pandas as pd
 from .config import Settings
 from .market_data import MarketData, MarketDataError
 from .models import STRATEGIES, PairConstraint, StrategySpec
-from .risk import calculate_position_size, daily_limit_breached, drawdown
+from .risk import (
+    calculate_position_size,
+    daily_limit_breached,
+    drawdown,
+    estimate_liquidation_price,
+    margin_utilization,
+)
 from .strategies import add_entry_indicators, add_trend_indicators, stop_distance
 
 
@@ -27,9 +33,12 @@ class SimAccount:
     cooldowns: dict[str, pd.Timestamp] = field(default_factory=dict)
     trades: int = 0
     wins: int = 0
+    liquidations: int = 0
     daily_limit_hits: int = 0
     max_positions: int = 0
     max_open_risk: float = 0.0
+    max_effective_leverage: float = 0.0
+    max_margin_utilization: float = 0.0
     curve: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -75,6 +84,7 @@ class Backtester:
             "data_source": self.settings.data_source,
             "strategies": results,
             "benchmark": benchmark,
+            "liquidation_model": "paper-isolated-margin-estimate",
         }
 
     def _prepare(self, frame: pd.DataFrame) -> pd.DataFrame:
@@ -155,8 +165,18 @@ class Backtester:
                     continue
                 bar = bars[pair]
                 direction = int(position["direction"])
+                liquidation_price = estimate_liquidation_price(
+                    float(position["entry"]), direction, spec.max_leverage
+                )
                 exit_price: float | None = None
-                if direction > 0 and float(bar["Low"]) <= float(position["stop"]):
+                liquidated = False
+                if liquidation_price is not None and direction > 0 and float(bar["Open"]) <= liquidation_price:
+                    exit_price = float(bar["Open"])
+                    liquidated = True
+                elif liquidation_price is not None and direction < 0 and float(bar["Open"]) >= liquidation_price:
+                    exit_price = float(bar["Open"])
+                    liquidated = True
+                elif direction > 0 and float(bar["Low"]) <= float(position["stop"]):
                     exit_price = min(float(bar["Open"]), float(position["stop"]))
                 elif direction < 0 and float(bar["High"]) >= float(position["stop"]):
                     exit_price = max(float(bar["Open"]), float(position["stop"]))
@@ -174,6 +194,7 @@ class Backtester:
                     won = self._close(account, pair, exit_price)
                     account.trades += 1
                     account.wins += int(won)
+                    account.liquidations += int(liquidated)
                     account.cooldowns[pair] = timestamp + pd.Timedelta(
                         minutes=self.settings.cooldown_minutes
                     )
@@ -236,6 +257,18 @@ class Backtester:
 
             equity = self._equity(account, prices)
             account.peak = max(account.peak, equity)
+            exposure = sum(
+                float(item["units"]) * prices.get(name, float(item["entry"]))
+                for name, item in account.positions.items()
+            )
+            if equity > 0:
+                account.max_effective_leverage = max(
+                    account.max_effective_leverage, exposure / equity
+                )
+                account.max_margin_utilization = max(
+                    account.max_margin_utilization,
+                    margin_utilization(exposure, equity, spec.max_leverage),
+                )
             if step % 4 == 0 or step == len(timestamps) - 1:
                 account.curve.append(
                     {
@@ -253,6 +286,7 @@ class Backtester:
             "strategy_id": spec.strategy_id,
             "label": spec.label,
             "color": spec.color,
+            "max_leverage": spec.max_leverage,
             "final_equity": round(final_equity, 2),
             "total_return_pct": round(
                 (final_equity / self.settings.starting_capital - 1) * 100, 2
@@ -264,9 +298,12 @@ class Backtester:
             "win_rate_pct": round(account.wins / account.trades * 100, 1)
             if account.trades
             else 0.0,
+            "liquidations": account.liquidations,
             "daily_limit_hits": account.daily_limit_hits,
             "max_positions": account.max_positions,
             "max_open_risk": round(account.max_open_risk, 2),
+            "max_effective_leverage": round(account.max_effective_leverage, 3),
+            "max_margin_utilization_pct": round(account.max_margin_utilization * 100, 2),
             "hard_locked": account.hard_locked,
             "curve": _downsample(account.curve),
         }
@@ -412,6 +449,7 @@ class Backtester:
             "strategy_id": "benchmark",
             "label": "Equal-weight hold",
             "color": "#c7ccd8",
+            "max_leverage": 1.0,
             "final_equity": round(final_value, 2),
             "total_return_pct": round(
                 (final_value / self.settings.starting_capital - 1) * 100, 2
@@ -421,9 +459,12 @@ class Backtester:
             ),
             "trades": len(frames),
             "win_rate_pct": None,
+            "liquidations": None,
             "daily_limit_hits": None,
             "max_positions": len(frames),
             "max_open_risk": None,
+            "max_effective_leverage": 1.0,
+            "max_margin_utilization_pct": None,
             "hard_locked": False,
             "curve": _downsample(curve),
         }
