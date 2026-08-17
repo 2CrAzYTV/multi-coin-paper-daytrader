@@ -42,6 +42,10 @@ def add_entry_indicators(frame: pd.DataFrame, settings: Settings) -> pd.DataFram
     data["ATR"] = _atr(data, settings.atr_window)
     data["RSI"] = _rsi(data["Close"], settings.rsi_window)
     data["VOLUME_MEDIAN"] = data["Volume"].rolling(20, min_periods=10).median()
+    data["EMA_STRENGTH"] = (
+        (data["EMA_FAST"] - data["EMA_SLOW"]).abs()
+        / data["ATR"].replace(0, np.nan)
+    )
     data.replace([np.inf, -np.inf], np.nan, inplace=True)
     return data
 
@@ -54,7 +58,69 @@ def add_trend_indicators(frame: pd.DataFrame, settings: Settings) -> pd.DataFram
     data["TREND_SLOW"] = data["Close"].ewm(
         span=settings.trend_slow_window, adjust=False
     ).mean()
+    data["TREND_STRENGTH_PCT"] = (
+        (data["TREND_FAST"] - data["TREND_SLOW"]).abs()
+        / data["Close"].replace(0, np.nan)
+    )
+    data["TREND_FAST_SLOPE"] = data["TREND_FAST"].diff(2)
     data.replace([np.inf, -np.inf], np.nan, inplace=True)
+    return data
+
+
+def add_signal_columns(
+    entry_frame: pd.DataFrame,
+    trend_frame: pd.DataFrame,
+    settings: Settings,
+) -> pd.DataFrame:
+    """Attach the same entry rules used by both live paper trading and backtests."""
+    data = entry_frame.copy()
+    for column in (
+        "TREND_FAST",
+        "TREND_SLOW",
+        "TREND_STRENGTH_PCT",
+        "TREND_FAST_SLOPE",
+    ):
+        data[column] = trend_frame[column].reindex(data.index, method="ffill")
+
+    previous_fast = data["EMA_FAST"].shift(1)
+    previous_slow = data["EMA_SLOW"].shift(1)
+    cross_up = (previous_fast <= previous_slow) & (data["EMA_FAST"] > data["EMA_SLOW"])
+    cross_down = (previous_fast >= previous_slow) & (data["EMA_FAST"] < data["EMA_SLOW"])
+    volume_ok = (
+        data["VOLUME_MEDIAN"].isna()
+        | (data["VOLUME_MEDIAN"] <= 0)
+        | (data["Volume"] >= data["VOLUME_MEDIAN"] * settings.volume_multiplier)
+    )
+    strength_ok = data["EMA_STRENGTH"].fillna(0) >= settings.signal_min_strength
+    trend_strength_ok = (
+        data["TREND_STRENGTH_PCT"].fillna(0) >= settings.trend_min_strength_pct
+    )
+    long_trend = (
+        (data["TREND_FAST"] > data["TREND_SLOW"])
+        & (data["TREND_FAST_SLOPE"] > 0)
+        & trend_strength_ok
+    )
+    short_trend = (
+        (data["TREND_FAST"] < data["TREND_SLOW"])
+        & (data["TREND_FAST_SLOPE"] < 0)
+        & trend_strength_ok
+    )
+    long_confirmation = (data["Close"] > data["EMA_FAST"]) & data["RSI"].between(
+        settings.long_rsi_min, settings.long_rsi_max
+    )
+    short_confirmation = (data["Close"] < data["EMA_FAST"]) & data["RSI"].between(
+        settings.short_rsi_min, settings.short_rsi_max
+    )
+
+    data["SIGNAL"] = 0
+    data.loc[
+        cross_up & long_trend & long_confirmation & volume_ok & strength_ok,
+        "SIGNAL",
+    ] = 1
+    data.loc[
+        cross_down & short_trend & short_confirmation & volume_ok & strength_ok,
+        "SIGNAL",
+    ] = -1
     return data
 
 
@@ -62,44 +128,39 @@ def signal_snapshot(
     pair: str,
     entry_frame: pd.DataFrame,
     trend_frame: pd.DataFrame,
+    settings: Settings,
 ) -> SignalSnapshot:
     if len(entry_frame) < 2 or trend_frame.empty:
         raise ValueError(f"I do not have enough candles for {pair}.")
-    previous = entry_frame.iloc[-2]
-    current = entry_frame.iloc[-1]
-    trend_bar = trend_frame.iloc[-1]
+    prepared = add_signal_columns(entry_frame, trend_frame, settings)
+    current = prepared.iloc[-1]
     required = (
         current["EMA_FAST"],
         current["EMA_SLOW"],
         current["ATR"],
         current["RSI"],
-        trend_bar["TREND_FAST"],
-        trend_bar["TREND_SLOW"],
+        current["TREND_FAST"],
+        current["TREND_SLOW"],
+        current["TREND_STRENGTH_PCT"],
+        current["TREND_FAST_SLOPE"],
     )
     if any(pd.isna(value) for value in required):
         direction, trend, reason = 0, 0, "I do not have enough indicator data yet"
     else:
-        cross_up = previous["EMA_FAST"] <= previous["EMA_SLOW"] and current[
-            "EMA_FAST"
-        ] > current["EMA_SLOW"]
-        cross_down = previous["EMA_FAST"] >= previous["EMA_SLOW"] and current[
-            "EMA_FAST"
-        ] < current["EMA_SLOW"]
-        trend = 1 if trend_bar["TREND_FAST"] > trend_bar["TREND_SLOW"] else -1
-        volume_median = float(current.get("VOLUME_MEDIAN", 0) or 0)
-        volume_ok = volume_median <= 0 or float(current["Volume"]) >= volume_median * 0.8
-        rsi = float(current["RSI"])
-        if cross_up and trend > 0 and 45 <= rsi <= 70 and volume_ok:
-            direction, reason = 1, "Long setup"
-        elif cross_down and trend < 0 and 30 <= rsi <= 55 and volume_ok:
-            direction, reason = -1, "Short setup"
-        elif not volume_ok:
-            direction, reason = 0, "Volume filter"
+        direction = int(current["SIGNAL"])
+        trend = 1 if current["TREND_FAST"] > current["TREND_SLOW"] else -1
+        if direction > 0:
+            reason = "Long setup: crossover + momentum + confirmed uptrend"
+        elif direction < 0:
+            reason = "Short setup: crossover + momentum + confirmed downtrend"
+        elif float(current.get("EMA_STRENGTH", 0) or 0) < settings.signal_min_strength:
+            reason = "Signal strength filter"
+        elif float(current.get("TREND_STRENGTH_PCT", 0) or 0) < settings.trend_min_strength_pct:
+            reason = "Trend strength filter"
         else:
-            direction, reason = 0, "I found no fresh EMA crossover"
+            reason = "I found no high-quality fresh EMA crossover"
     atr = 0.0 if pd.isna(current.get("ATR")) else float(current["ATR"])
-    ema_gap = abs(float(current["EMA_FAST"]) - float(current["EMA_SLOW"]))
-    strength = ema_gap / atr if atr > 0 else 0.0
+    strength = 0.0 if pd.isna(current.get("EMA_STRENGTH")) else float(current["EMA_STRENGTH"])
     return SignalSnapshot(
         pair=pair,
         candle_time=pd.Timestamp(entry_frame.index[-1]).isoformat(),
@@ -113,12 +174,19 @@ def signal_snapshot(
     )
 
 
-def should_exit(direction: int, entry_frame: pd.DataFrame) -> bool:
-    latest = entry_frame.iloc[-1]
+def should_exit(
+    direction: int,
+    entry_frame: pd.DataFrame,
+    confirmation_bars: int = 2,
+) -> bool:
+    bars = max(1, int(confirmation_bars))
+    if len(entry_frame) < bars:
+        return False
+    recent = entry_frame.iloc[-bars:]
     if direction > 0:
-        return float(latest["EMA_FAST"]) < float(latest["EMA_SLOW"])
+        return bool((recent["EMA_FAST"] < recent["EMA_SLOW"]).all())
     if direction < 0:
-        return float(latest["EMA_FAST"]) > float(latest["EMA_SLOW"])
+        return bool((recent["EMA_FAST"] > recent["EMA_SLOW"]).all())
     return False
 
 
