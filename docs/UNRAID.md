@@ -170,6 +170,28 @@ because it identifies one immutable image, while `latest` moves.
 
 ## Troubleshooting
 
+### My market prices do not appear to match Bitpanda
+
+I first check that the dashboard reports **Bitpanda Fusion** as its data source.
+The scanner displays the close of the latest completed 15-minute Fusion candle,
+while the Bitpanda app displays a continuously changing quote. I therefore
+expect a small time- and venue-dependent difference.
+
+I display market prices below €1 with four decimal places and prices below
+€0.01 with six decimal places. I keep portfolio balances at two decimal places.
+This prevents values such as €0.8649 from appearing only as €0.87 without
+changing the full-precision values used by the simulation.
+
+If I have just changed `DATA_SOURCE=demo` to `DATA_SOURCE=fusion`, my database
+may still contain the last saved demo snapshots. For a clean Fusion simulation,
+I use **Reset my paper accounts → Delete paper data**, confirm the deletion, and
+then select **Run scan now**. This deletes local simulated balances, positions,
+trades, and cached market snapshots, but it does not delete my `.env`, API key,
+or container configuration.
+
+Before deleting paper data that I want to preserve, I create a database backup
+as described above.
+
 ### I receive `unauthorized` while pulling
 
 The public image does not require a registry login. I remove stale credentials

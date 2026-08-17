@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- I display sub-euro market prices with four to six decimal places while I keep
+  portfolio currency values at two decimal places.
+- I explain that scanner prices are closed 15-minute Fusion candle values, so
+  they can differ slightly from Bitpanda's continuously changing app quote.
+- I document a clean paper-data reset when I switch from demo data to Fusion,
+  preventing saved demo snapshots from being mistaken for live market prices.
 - I prepared the complete repository for a public English-language release.
 - I added a hardened native Unraid template and a matching icon.
 - I documented image updates, persistent storage, backup, and digest rollback.

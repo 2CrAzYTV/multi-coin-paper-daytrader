@@ -1,7 +1,22 @@
 const state = { config: null, status: null, backtest: null };
 
 const euro = new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR" });
+const preciseEuro = new Intl.NumberFormat("en-GB", {
+  style: "currency", currency: "EUR", minimumFractionDigits: 4, maximumFractionDigits: 4
+});
+const microEuro = new Intl.NumberFormat("en-GB", {
+  style: "currency", currency: "EUR", minimumFractionDigits: 6, maximumFractionDigits: 6
+});
 const number = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+
+function formatMarketPrice(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "–";
+  const absolute = Math.abs(amount);
+  if (absolute > 0 && absolute < 0.01) return microEuro.format(amount);
+  if (absolute < 1) return preciseEuro.format(amount);
+  return euro.format(amount);
+}
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
@@ -69,7 +84,7 @@ function renderMarkets() {
     const signalClass = item.signal > 0 ? "positive" : item.signal < 0 ? "negative" : "muted";
     return `<article class="market-card">
       <div><strong>${escapeHtml(pair)}</strong><span class="${signalClass}">${signal}</span></div>
-      <b>${euro.format(item.price)}</b>
+      <b>${formatMarketPrice(item.price)}</b>
       <p>${trend} · RSI ${number.format(item.rsi)}</p>
       <small>${escapeHtml(item.reason)} · ${formatTime(item.candle_time)}</small>
     </article>`;

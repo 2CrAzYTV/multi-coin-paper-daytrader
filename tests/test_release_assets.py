@@ -35,6 +35,8 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("Check for Updates", guide)
         self.assertIn("/mnt/user/appdata/paper-trading-bot/data", guide)
         self.assertIn("@sha256:", guide)
+        self.assertIn("latest completed 15-minute Fusion candle", guide)
+        self.assertIn("Reset my paper accounts → Delete paper data", guide)
         self.assertNotIn("docker login ghcr.io", guide)
 
     def test_public_facing_assets_are_english(self):
@@ -57,6 +59,13 @@ class ReleaseAssetTests(unittest.TestCase):
             for marker in german_markers:
                 self.assertNotIn(marker, content, relative)
         self.assertIn('<html lang="en">', (ROOT / "app/static/index.html").read_text())
+
+    def test_market_prices_keep_sub_euro_precision(self):
+        javascript = (ROOT / "app/static/app.js").read_text()
+        self.assertIn("function formatMarketPrice(value)", javascript)
+        self.assertIn("minimumFractionDigits: 4, maximumFractionDigits: 4", javascript)
+        self.assertIn("minimumFractionDigits: 6, maximumFractionDigits: 6", javascript)
+        self.assertIn("${formatMarketPrice(item.price)}", javascript)
 
     def test_release_policy_files_exist(self):
         for relative in (
