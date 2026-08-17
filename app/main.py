@@ -18,8 +18,22 @@ from .scheduler import scheduler_loop
 from .walk_forward import WalkForwardBacktester
 
 
+class AutoScanRepository(Repository):
+    """Keep expected auto-universe data gaps out of the red error feed."""
+
+    def add_event(self, level: str, strategy_id: str | None, message: str) -> None:
+        expected_gap = (
+            level == "error"
+            and message.startswith("I could not load market data for ")
+            and ("too few candles" in message or "no Fusion candles" in message)
+        )
+        if expected_gap:
+            return
+        super().add_event(level, strategy_id, message)
+
+
 settings = Settings.from_env()
-repository = Repository(settings.database_path, settings.starting_capital)
+repository = AutoScanRepository(settings.database_path, settings.starting_capital)
 market = MarketData(settings)
 engine = PaperEngine(settings, repository, market)
 backtester = WalkForwardBacktester(settings, market)
@@ -27,20 +41,30 @@ static_dir = Path(__file__).parent / "static"
 
 
 def _auto_coin_scan_requested() -> bool:
-    """Return whether Fusion should replace the legacy PAIRS list automatically."""
     return getenv("AUTO_COIN_SCAN", "true").strip().lower() in {"1", "true", "yes", "on", "ja"}
 
 
 def _refresh_coin_universe() -> tuple[str, ...]:
-    """Discover every active Fusion EUR pair and make it the current research universe."""
     if settings.data_source != "fusion" or not _auto_coin_scan_requested():
         return tuple(settings.pairs)
-
     discovered = market.available_eur_pairs()
     if not discovered:
         raise MarketDataError("I found no active EUR pairs during the automatic Fusion coin scan.")
     object.__setattr__(settings, "pairs", tuple(discovered))
     return tuple(discovered)
+
+
+def _record_skip_summary(result: dict) -> None:
+    failures = result.get("failures", {})
+    if not failures:
+        return
+    preview = ", ".join(sorted(failures)[:12])
+    suffix = "" if len(failures) <= 12 else f" (+{len(failures) - 12} weitere)"
+    repository.add_event(
+        "warning",
+        None,
+        f"Auto-Coin-Scan: {len(failures)} Märkte wegen fehlender/ungenügender Candle-Daten übersprungen: {preview}{suffix}.",
+    )
 
 
 @asynccontextmanager
@@ -110,7 +134,9 @@ async def status() -> dict:
 async def run_paper_cycle() -> dict:
     try:
         await asyncio.to_thread(_refresh_coin_universe)
-        return await asyncio.to_thread(engine.run_once)
+        result = await asyncio.to_thread(engine.run_once)
+        _record_skip_summary(result)
+        return result
     except MarketDataError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
