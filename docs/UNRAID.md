@@ -20,8 +20,9 @@ These permissions allow SQLite to create and update the database without
 weakening that runtime restriction.
 
 A separate `.env` file is not required when I use the included Unraid template.
-The template exposes the important application settings directly as Unraid
-container variables and also includes the complete advanced strategy defaults.
+The template exposes the full requested application configuration directly as
+Unraid container variables, including the strategy defaults and compatibility
+values `WEB_PORT`, `PUID`, and `PGID`.
 
 ## 2. I use the public image
 
@@ -42,44 +43,69 @@ docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 
 The included
 [`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
-contains the image, WebUI, icon, data mapping, hardened runtime and bot defaults.
-The main fields shown directly in the Unraid template are:
+contains the image, WebUI, icon, data mapping, hardened runtime and all requested
+bot defaults.
 
-| Field | Default |
-| --- | --- |
-| Name | `paper-trading-bot` |
-| Repository | `ghcr.io/2crazytv/multi-coin-paper-daytrader:latest` |
-| Network Type | `bridge` |
-| WebUI | `http://[IP]:[PORT:8787]/` |
-| WebUI Port | `8787` |
-| Persistent Data | `/mnt/user/appdata/paper-trading-bot/data` → `/data` |
-| UI Language | `de` |
-| Market Data Source | `demo` |
-| Starting Paper Capital | `1000` EUR |
-| Risk per Trade | `0.005` = 0.5% |
-| Maximum Aggregate Risk | `0.01` = 1% |
-| Maximum Daily Loss | `0.02` = 2% |
-| Maximum Open Positions | `2` |
-| Maximum Trades per Day | `3` |
-| Trading Pairs | `BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR` |
-| Candle Interval | `15m` |
-| Trend Interval | `1h` |
+The defaults are:
 
-The Fusion API key field is masked in the Unraid form. I only fill it when I
-select `DATA_SOURCE=fusion`, and I create the Bitpanda Fusion key with **Read**
-permission only while leaving **Trade** and **Transfer** disabled.
+```dotenv
+PAPER_ONLY=true
+STARTING_CAPITAL=1000
+RISK_PER_TRADE=0.005
+MAX_AGGREGATE_RISK=0.01
+MAX_DAILY_LOSS=0.02
+HARD_DRAWDOWN=0.10
+MAX_OPEN_POSITIONS=2
+MAX_TRADES_PER_DAY=3
+FEE_RATE=0.001
+SLIPPAGE_RATE=0.0005
+PAIRS=BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR
+CANDLE_INTERVAL=15m
+TREND_INTERVAL=1h
+FAST_WINDOW=9
+SLOW_WINDOW=21
+TREND_FAST_WINDOW=20
+TREND_SLOW_WINDOW=50
+ATR_WINDOW=14
+RSI_WINDOW=14
+STOP_ATR_MULTIPLE=1.5
+MINIMUM_STOP_PCT=0.006
+TAKE_PROFIT_R=2.0
+TRAILING_TRIGGER_R=1.0
+HISTORY_BARS=500
+BACKTEST_BARS=1000
+DATA_SOURCE=demo
+FUSION_READ_API_KEY=
+FUSION_BASE_URL=https://api.fusion.bitpanda.com
+APP_TIMEZONE=Europe/Berlin
+POLL_SECONDS=60
+SESSION_CLOSE_HOUR=23
+SESSION_CLOSE_MINUTE=45
+COOLDOWN_MINUTES=45
+APP_LANGUAGE=de
+DATA_DIR=/data
+WEB_PORT=8787
+PUID=99
+PGID=100
+```
 
-Under **Show more settings** / advanced view, the template also exposes the
-remaining strategy and runtime defaults such as hard drawdown, fee and slippage
-rates, EMA/ATR/RSI windows, stop and take-profit parameters, history/backtest
-bars, poll interval, session close time, cooldown, application timezone,
-`DATA_DIR`, `FUSION_BASE_URL`, and the `PAPER_ONLY=true` safety lock.
+The **Bitpanda Key** field is intentionally empty and masked in the Unraid
+form. I only fill it when I select `DATA_SOURCE=fusion`, and I create the
+Bitpanda Fusion key with **Read** permission only while leaving **Trade** and
+**Transfer** disabled.
 
-The template uses these **Extra Parameters**:
+The WebUI is mapped to port `8787`, persistent data is mapped from
+`/mnt/user/appdata/paper-trading-bot/data` to `/data`, and the container uses
+these hardened **Extra Parameters**:
 
 ```text
 --user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20
 ```
+
+`PUID=99`, `PGID=100`, and `WEB_PORT=8787` are also exposed as variables for
+configuration parity. The actual hardened runtime UID/GID is fixed to `99:100`
+by the Extra Parameters, and the actual Unraid host port is controlled by the
+WebUI port mapping.
 
 I keep `PAPER_ONLY=true`. This release rejects any configuration that disables
 paper-only mode and cannot place real-money orders.
@@ -117,9 +143,9 @@ strategy rules, or market data.
 ## 6. I enable read-only current market data
 
 I change **Market Data Source** from `demo` to `fusion` and fill **Bitpanda
-Fusion Read API Key**. I create that key with **Read** permission only and leave
-**Trade** and **Transfer** disabled. I then select **Apply** so Unraid recreates
-the container with the changed environment variables.
+Key**. I create that key with **Read** permission only and leave **Trade** and
+**Transfer** disabled. I then select **Apply** so Unraid recreates the container
+with the changed environment variables.
 
 ## Updates, backup, and rollback
 
@@ -142,14 +168,11 @@ template. My bind mount at
 Important: Unraid keeps the locally saved template of an existing container.
 If the repository template itself gains new fields, an ordinary image update
 may not automatically add those new XML entries to the already-installed
-container form. In that case I open the container for editing and use the
-current repository template as reference, or recreate the container from the
-updated template while keeping the same persistent `/data` mapping.
+container form. In that case I recreate the container from the updated template
+while keeping the same persistent `/data` mapping.
 
 I know that `docker restart` and `--restart=unless-stopped` do not pull a new
-image. They only restart the locally installed image. The `:latest` workflow
-is also compatible with an Unraid automatic-update feature if I deliberately
-enable one, but I prefer controlled updates for a trading simulation.
+image. They only restart the locally installed image.
 
 ### How I back up SQLite
 
@@ -174,8 +197,7 @@ docker image inspect \
 ```
 
 To roll back, I temporarily replace `:latest` in the Unraid **Repository**
-field with the full `@sha256:…` reference and select **Apply**. I use a digest
-because it identifies one immutable image, while `latest` moves.
+field with the full `@sha256:…` reference and select **Apply**.
 
 ## Troubleshooting
 
@@ -188,18 +210,11 @@ expect a small time- and venue-dependent difference.
 
 I display market prices below €1 with four decimal places and prices below
 €0.01 with six decimal places. I keep portfolio balances at two decimal places.
-This prevents values such as €0.8649 from appearing only as €0.87 without
-changing the full-precision values used by the simulation.
 
 If I have just changed `DATA_SOURCE=demo` to `DATA_SOURCE=fusion`, my database
 may still contain the last saved demo snapshots. For a clean Fusion simulation,
 I use **Reset my paper accounts → Delete paper data**, confirm the deletion, and
-then select **Run scan now**. This deletes local simulated balances, positions,
-trades, and cached market snapshots, but it does not delete the container
-configuration or Fusion API key.
-
-Before deleting paper data that I want to preserve, I create a database backup
-as described above.
+then select **Run scan now**.
 
 ### I receive `unauthorized` while pulling
 
@@ -222,5 +237,4 @@ curl -I --max-time 5 http://127.0.0.1:8787/
 curl -I --max-time 5 http://UNRAID-IP:8787/
 ```
 
-I expect `8787/tcp` to map to `0.0.0.0:8787` or my intended LAN address. I
-also check the browser cache, local firewall, and VLAN rules.
+I expect `8787/tcp` to map to `0.0.0.0:8787` or my intended LAN address.
