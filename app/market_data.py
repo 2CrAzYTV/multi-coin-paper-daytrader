@@ -61,7 +61,7 @@ class MarketData:
                 data = pd.DataFrame(payload).rename(columns={"open":"Open","high":"High","low":"Low","close":"Close","volume":"Volume"})
                 data.index = pd.to_datetime(data.pop("timestamp"), unit="s", utc=True)
             except Exception as exc: raise MarketDataError(f"I could not parse Fusion candles for {pair}.") from exc
-            data = self._normalize(data, pair); chunks.append(data); remaining -= len(data)
+            data = self._normalize(data, pair, min_rows=1); chunks.append(data); remaining -= len(data)
             oldest = int(data.index.min().timestamp()); next_before = oldest - INTERVAL_SECONDS[interval]
             if before is not None and next_before >= before: break
             before = next_before
@@ -69,6 +69,7 @@ class MarketData:
         data = pd.concat(chunks); data = data[~data.index.duplicated(keep="last")].sort_index().tail(limit)
         seconds = INTERVAL_SECONDS[interval]; now = datetime.now(UTC).timestamp()
         if len(data) > 1 and data.index[-1].timestamp() + seconds > now - 5: data = data.iloc[:-1]
+        if len(data) < 60: raise MarketDataError(f"I received too few candles for {pair}: {len(data)} instead of at least 60.")
         return data
 
     def _get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
@@ -82,13 +83,13 @@ class MarketData:
             raise MarketDataError(f"I could not retrieve Bitpanda Fusion data ({detail}).") from exc
 
     @staticmethod
-    def _normalize(data: pd.DataFrame, pair: str) -> pd.DataFrame:
+    def _normalize(data: pd.DataFrame, pair: str, min_rows: int = 60) -> pd.DataFrame:
         required=["Open","High","Low","Close","Volume"]; missing=[c for c in required if c not in data.columns]
         if missing: raise MarketDataError(f"I received market data for {pair} without these columns: {missing}")
         clean=data[required].copy()
         for column in required: clean[column]=pd.to_numeric(clean[column], errors="coerce")
         clean=clean.dropna(); clean.index=pd.to_datetime(clean.index, utc=True); clean=clean[~clean.index.duplicated(keep="last")].sort_index()
-        if len(clean)<60: raise MarketDataError(f"I received too few candles for {pair}: {len(clean)} instead of at least 60.")
+        if len(clean)<min_rows: raise MarketDataError(f"I received too few candles for {pair}: {len(clean)} instead of at least {min_rows}.")
         return clean.astype(float)
 
     @staticmethod
