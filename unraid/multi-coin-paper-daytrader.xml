@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Container version="2">
+  <Name>Multi-Coin Paper Daytrader</Name>
+  <Repository>ghcr.io/2crazytv/multi-coin-paper-daytrader:latest</Repository>
+  <Registry>https://ghcr.io/2crazytv/multi-coin-paper-daytrader</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/2CrAzYTV/multi-coin-paper-daytrader/issues</Support>
+  <Project>https://github.com/2CrAzYTV/multi-coin-paper-daytrader</Project>
+  <Overview>Paper-only Multi-Coin-Daytrading-Simulator mit gemeinsamem Risikobudget, Demo-Daten und optionalen lesenden Bitpanda-Fusion-Marktdaten. Das Dashboard besitzt keine Anmeldung und darf nur im vertrauenswürdigen LAN erreichbar sein.</Overview>
+  <Category>Tools: Other:</Category>
+  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.svg</Icon>
+  <ExtraParams>--user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --restart=unless-stopped --stop-timeout=20</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Vor dem Start /mnt/user/appdata/paper-trading-bot/data anlegen und nobody:users (99:100) zuweisen. Private GHCR-Pakete erfordern docker login ghcr.io. Vollständige Anleitung: docs/UNRAID.md</Requires>
+  <Config Name="WebUI Port" Target="8787" Default="8787" Mode="tcp" Description="Port des lokalen Dashboards" Type="Port" Display="always" Required="true" Mask="false">8787</Config>
+  <Config Name="Persistent Data" Target="/data" Default="/mnt/user/appdata/paper-trading-bot/data" Mode="rw" Description="SQLite-Daten und Cache; muss für UID/GID 99:100 beschreibbar sein" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/paper-trading-bot/data</Config>
+  <Config Name="Paper Only" Target="PAPER_ONLY" Default="true" Mode="" Description="Muss true bleiben; false verhindert den Start" Type="Variable" Display="advanced" Required="true" Mask="false">true</Config>
+  <Config Name="Data Source" Target="DATA_SOURCE" Default="demo" Mode="" Description="demo oder fusion" Type="Variable" Display="always" Required="true" Mask="false">demo</Config>
+  <Config Name="Fusion Read API Key" Target="FUSION_READ_API_KEY" Default="" Mode="" Description="Optional; ausschließlich Read-Berechtigung verwenden" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="App Timezone" Target="APP_TIMEZONE" Default="Europe/Berlin" Mode="" Description="Zeitzone für Tagesgrenzen und Sitzungsabschluss" Type="Variable" Display="always" Required="true" Mask="false">Europe/Berlin</Config>
+  <Config Name="Container Timezone" Target="TZ" Default="Europe/Berlin" Mode="" Description="Zeitzone für Container und Logs" Type="Variable" Display="advanced" Required="true" Mask="false">Europe/Berlin</Config>
+  <Config Name="Pairs" Target="PAIRS" Default="BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR" Mode="" Description="Kommagetrennte EUR-Paare, maximal 10" Type="Variable" Display="always" Required="true" Mask="false">BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR</Config>
+  <Config Name="Starting Capital" Target="STARTING_CAPITAL" Default="1000" Mode="" Description="Virtuelles Startkapital je Vergleichsstrategie" Type="Variable" Display="always" Required="true" Mask="false">1000</Config>
+  <Config Name="Risk Per Trade" Target="RISK_PER_TRADE" Default="0.005" Mode="" Description="Modelliertes Risiko je Trade; maximal 0.01" Type="Variable" Display="advanced" Required="true" Mask="false">0.005</Config>
+  <Config Name="Aggregate Risk" Target="MAX_AGGREGATE_RISK" Default="0.01" Mode="" Description="Gesamtrisiko offener Trades; maximal 0.02" Type="Variable" Display="advanced" Required="true" Mask="false">0.01</Config>
+  <Config Name="Daily Loss Limit" Target="MAX_DAILY_LOSS" Default="0.02" Mode="" Description="Tagesverlust-Limit; maximal 0.02" Type="Variable" Display="advanced" Required="true" Mask="false">0.02</Config>
+  <Config Name="Hard Drawdown" Target="HARD_DRAWDOWN" Default="0.10" Mode="" Description="Dauerhafter Paper-Not-Aus" Type="Variable" Display="advanced" Required="true" Mask="false">0.10</Config>
+  <Config Name="Maximum Open Positions" Target="MAX_OPEN_POSITIONS" Default="2" Mode="" Description="Portfolioweites Limit, 1 bis 3" Type="Variable" Display="advanced" Required="true" Mask="false">2</Config>
+  <Config Name="Maximum Trades Per Day" Target="MAX_TRADES_PER_DAY" Default="3" Mode="" Description="Portfolioweites Tageslimit, 1 bis 6" Type="Variable" Display="advanced" Required="true" Mask="false">3</Config>
+  <Config Name="Fee Rate" Target="FEE_RATE" Default="0.001" Mode="" Description="Simulierte Gebührenrate" Type="Variable" Display="advanced" Required="true" Mask="false">0.001</Config>
+  <Config Name="Slippage Rate" Target="SLIPPAGE_RATE" Default="0.0005" Mode="" Description="Simulierte Slippage" Type="Variable" Display="advanced" Required="true" Mask="false">0.0005</Config>
+  <Config Name="Candle Interval" Target="CANDLE_INTERVAL" Default="15m" Mode="" Description="Signalintervall" Type="Variable" Display="advanced" Required="true" Mask="false">15m</Config>
+  <Config Name="Trend Interval" Target="TREND_INTERVAL" Default="1h" Mode="" Description="Intervall des Trendfilters" Type="Variable" Display="advanced" Required="true" Mask="false">1h</Config>
+  <Config Name="Poll Seconds" Target="POLL_SECONDS" Default="60" Mode="" Description="Prüfintervall, 30 bis 900 Sekunden" Type="Variable" Display="advanced" Required="true" Mask="false">60</Config>
+  <Config Name="Session Close Hour" Target="SESSION_CLOSE_HOUR" Default="23" Mode="" Description="Stunde des täglichen Paper-Positionsschlusses" Type="Variable" Display="advanced" Required="true" Mask="false">23</Config>
+  <Config Name="Session Close Minute" Target="SESSION_CLOSE_MINUTE" Default="45" Mode="" Description="Minute des täglichen Paper-Positionsschlusses" Type="Variable" Display="advanced" Required="true" Mask="false">45</Config>
+  <Config Name="Data Directory" Target="DATA_DIR" Default="/data" Mode="" Description="Interner persistenter Datenpfad" Type="Variable" Display="advanced" Required="true" Mask="false">/data</Config>
+</Container>

@@ -1,0 +1,37 @@
+name: Verbesserung vorschlagen
+description: Eine Funktion oder Dokumentationsverbesserung für den Paper-Simulator vorschlagen
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: Echte Orders, Konto-, Trade- und Transferfunktionen liegen außerhalb des Projektumfangs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Ausgangsproblem
+      description: Welches konkrete Problem soll gelöst werden?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Vorgeschlagene Lösung
+      description: Beschreibe Verhalten, Bedienung und erwarteten Nutzen.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Sicherheits- und Risikofolgen
+      description: Welche Paper-only-, Datenschutz- oder Risikogrenzen sind betroffen?
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Umfang
+      options:
+        - label: Der Vorschlag benötigt keine echte Order-, Trade-, Konto- oder Transferfunktion.
+          required: true

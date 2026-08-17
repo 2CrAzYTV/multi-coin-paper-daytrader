@@ -1,6 +1,9 @@
-name: Test and publish container image
+name: CI and container image
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -41,11 +44,22 @@ jobs:
       - name: Run Python tests
         run: python -m unittest discover -s tests -v
 
+      - name: Compile Python sources
+        run: python -m compileall -q app tests
+
       - name: Validate JavaScript
         run: node --check app/static/app.js
 
+      - name: Validate Unraid template
+        run: python -c "import xml.etree.ElementTree as ET; ET.parse('unraid/multi-coin-paper-daytrader.xml')"
+
+      - name: Validate container build on pull requests
+        if: github.event_name == 'pull_request'
+        run: docker build --pull --tag multi-coin-paper-daytrader:pr .
+
   build-and-push:
-    name: Build and publish private image
+    name: Build and publish image
+    if: github.event_name != 'pull_request'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -72,6 +86,8 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
             type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push image
         id: push

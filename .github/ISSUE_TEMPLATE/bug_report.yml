@@ -1,0 +1,59 @@
+name: Fehler melden
+description: Einen reproduzierbaren technischen Fehler melden
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für den Bericht. Keine `.env`, API-Schlüssel, Registry-Tokens oder Datenbanken hochladen. Sicherheitsprobleme bitte über die Security Policy melden.
+  - type: input
+    id: version
+    attributes:
+      label: Version oder Image-Digest
+      description: Zum Beispiel `v0.2.0`, Commit-SHA oder `sha256:…`.
+      placeholder: sha256:…
+    validations:
+      required: true
+  - type: dropdown
+    id: data_source
+    attributes:
+      label: Datenquelle
+      options:
+        - demo
+        - fusion (Read-only)
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Fehlerbeschreibung
+      description: Was ist passiert und was wurde erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduzierbare Schritte
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Bereinigte Logs
+      description: Nur relevante Zeilen; Geheimnisse und persönliche Daten vorher entfernen.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Sicherheitscheck
+      options:
+        - label: Ich habe die Ausgabe auf Zugangsdaten und persönliche Daten geprüft.
+          required: true
+        - label: Der Container läuft mit `PAPER_ONLY=true`.
+          required: true

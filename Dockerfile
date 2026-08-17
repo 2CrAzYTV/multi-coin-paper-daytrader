@@ -2,7 +2,11 @@ FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="Multi-Coin Paper Daytrader" \
       org.opencontainers.image.version="0.2.0" \
-      org.opencontainers.image.description="Paper-only crypto daytrading simulator for Unraid"
+      org.opencontainers.image.description="Paper-only crypto daytrading simulator for Unraid" \
+      org.opencontainers.image.source="https://github.com/2CrAzYTV/multi-coin-paper-daytrader" \
+      org.opencontainers.image.url="https://github.com/2CrAzYTV/multi-coin-paper-daytrader" \
+      org.opencontainers.image.documentation="https://github.com/2CrAzYTV/multi-coin-paper-daytrader/blob/main/docs/UNRAID.md" \
+      org.opencontainers.image.licenses="MIT"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

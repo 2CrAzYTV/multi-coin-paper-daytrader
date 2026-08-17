@@ -12,6 +12,12 @@ Standarduniversum: `BTC-EUR`, `ETH-EUR`, `SOL-EUR`, `XRP-EUR`, `ADA-EUR`.
 Die 1.000 € gelten je Vergleichsstrategie als **ein gemeinsames Portfolio**,
 nicht als zusätzliches Kapital pro Coin.
 
+> **Veröffentlichungsstatus:** Repository und Container-Image befinden sich
+> derzeit in einer privaten Erprobungsphase. Die technische Vorbereitung für
+> eine spätere öffentliche MIT-Veröffentlichung ist vorhanden; die bewusste
+> Freigabe erfolgt erst nach Abschluss der
+> [Release-Checkliste](docs/RELEASE_CHECKLIST.md).
+
 ## Sicherheitsstatus
 
 Diese Version ist technisch **Paper-only**:
@@ -69,14 +75,35 @@ von zusammen etwa **1,5 % bei Gold** und **4,5 % bei Silber**. Das wäre im
 Verhältnis zum 2-%-Tageslimit zu teuer. Quelle:
 [Bitpanda Metals](https://support.bitpanda.com/hc/de/articles/360004208619-Was-ist-Bitpanda-Metals).
 
-## Installation auf Unraid aus einem Git-Repository
+## Empfohlene Installation auf Unraid
 
-Nach dem Hochladen dieses Projekts ersetzt du `<REPOSITORY-URL>` durch die URL
-deines privaten oder öffentlichen Repositories:
+Das fertige Image benötigt auf Unraid weder Git noch Docker Compose:
+
+```text
+ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
+```
+
+Die vollständige Schritt-für-Schritt-Anleitung enthält:
+
+- private GHCR-Anmeldung und späteren öffentlichen Pull
+- native **Add Container**-Felder und ein fertiges Unraid-XML-Template
+- gehärtete Container-Optionen ohne Root-Rechte
+- Start-, Health- und WebUI-Prüfung
+- manuelle Updates, Backups und Rollback per Image-Digest
+- Fehlerdiagnose für Pull, Rechte, Port und WebUI
+
+➡️ **[Installation und Betrieb auf Unraid](docs/UNRAID.md)**
+
+Das Dashboard ist anschließend unter `http://UNRAID-IP:8787` erreichbar. Es
+besitzt keine Anmeldung und darf nur im vertrauenswürdigen LAN verfügbar sein.
+
+## Installation aus dem Quellcode
+
+Für Entwicklung oder lokale Builds kann das Repository weiterhin mit Docker
+Compose gestartet werden:
 
 ```bash
-cd /mnt/user/appdata
-git clone <REPOSITORY-URL> paper-trading-bot
+git clone https://github.com/2CrAzYTV/multi-coin-paper-daytrader.git paper-trading-bot
 cd paper-trading-bot
 cp .env.example .env
 mkdir -p data
@@ -102,22 +129,32 @@ Der SQLite-Datenbestand liegt dauerhaft unter
 
 ## Updates auf Unraid
 
-```bash
-cd /mnt/user/appdata/paper-trading-bot
-git pull --ff-only
-docker compose up -d --build
-docker image prune -f
-```
+Ein Push auf `main` kann ein neues `:latest`-Image erzeugen, ersetzt aber keinen
+laufenden Container. `--restart=unless-stopped` startet nur dasselbe lokale
+Image nach Absturz, Docker-Neustart oder Server-Reboot. Auch `docker restart`
+führt keinen Pull aus.
+
+Während der privaten Erprobung Updates deshalb kontrolliert über Unraid
+ausführen: **Docker → Check for Updates → Update/Force Update**. Das Image wird
+gezogen und der Container mit seinen gespeicherten Einstellungen neu erstellt.
+Der `/data`-Bind-Mount bleibt erhalten. Für das private Paket muss Unraid bei
+GHCR angemeldet sein.
 
 Vor einem größeren Update ist ein Backup sinnvoll:
 
 ```bash
-cp data/paper_trading.sqlite3 data/paper_trading.sqlite3.backup
+docker stop paper-trading-bot
+cp -a \
+  /mnt/user/appdata/paper-trading-bot/data/paper_trading.sqlite3 \
+  /mnt/user/appdata/paper-trading-bot/data/paper_trading.sqlite3.backup
+docker start paper-trading-bot
 ```
+
+Details und Rollback-Anleitung: [docs/UNRAID.md](docs/UNRAID.md#updates).
 
 ## Zuerst im Demo-Modus starten
 
-Die mitgelieferte `.env` verwendet `DATA_SOURCE=demo`. Damit startet der Bot
+Die mitgelieferte `.env.example` verwendet `DATA_SOURCE=demo`. Damit startet der Bot
 sofort mit reproduzierbaren Offline-Daten. Für echte Bitpanda-Marktdaten:
 
 1. In Bitpanda einen **Fusion API Key ausschließlich mit Read-Recht** anlegen.
@@ -172,6 +209,7 @@ Zusätzliche lokale Prüfungen:
 ```bash
 python -m compileall -q app tests
 node --check app/static/app.js
+python -c "import xml.etree.ElementTree as ET; ET.parse('unraid/multi-coin-paper-daytrader.xml')"
 ```
 
 ## Grenzen
@@ -186,3 +224,13 @@ node --check app/static/app.js
 - Ein stabiler Paper-Test über mehrere Marktphasen ist Voraussetzung für jede
   spätere Entscheidung. Echtgeldhandel ist bewusst nicht Bestandteil dieses
   Repositories.
+
+## Lizenz, Sicherheit und Mitwirkung
+
+- [MIT-Lizenz](LICENSE)
+- [Haftungsausschluss](DISCLAIMER.md)
+- [Sicherheitsrichtlinie](SECURITY.md)
+- [Support](SUPPORT.md)
+- [Beitragsrichtlinien](CONTRIBUTING.md)
+- [Verhaltenskodex](CODE_OF_CONDUCT.md)
+- [Checkliste für die öffentliche Veröffentlichung](docs/RELEASE_CHECKLIST.md)

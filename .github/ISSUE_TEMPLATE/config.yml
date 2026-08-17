@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitsproblem vertraulich melden
+    url: https://github.com/2CrAzYTV/multi-coin-paper-daytrader/security/policy
+    about: Keine Schwachstellen, Tokens oder API-Schlüssel in ein öffentliches Issue schreiben.
+  - name: Installations- und Betriebsanleitung
+    url: https://github.com/2CrAzYTV/multi-coin-paper-daytrader/blob/main/docs/UNRAID.md
+    about: Hinweise zu Unraid, GHCR, Updates, Backup und Fehlerdiagnose.
