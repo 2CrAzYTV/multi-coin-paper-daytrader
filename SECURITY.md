@@ -26,10 +26,18 @@ helpful. I require all credentials to be removed or replaced with placeholders.
   operation.
 - If I use a Fusion key, I grant **Read** permission only, never **Trade** or
   **Transfer**.
-- I run the container as UID/GID `99:100`, with a read-only root filesystem,
-  no Linux capabilities, and `no-new-privileges`.
+- I never return the Fusion key through the dashboard or public configuration
+  API.
+- The Unraid key field is masked for display, but masking is not encryption.
+  Unraid can persist the value in its local saved container configuration, so I
+  protect `/boot/config` and do not share saved templates or flash backups that
+  contain a real key.
+- I run the container as UID/GID `99:100`, with a read-only root filesystem, no
+  Linux capabilities, and `no-new-privileges`.
 - I keep the dashboard inside a trusted LAN or behind a separately secured
   authenticated gateway because the application itself has no login.
 - I never commit `.env`, databases, backups, API keys, or registry tokens.
+- `.env` is optional for local Docker Compose overrides and is not required by
+  the native Unraid deployment.
 
 I document my hardened deployment in [docs/UNRAID.md](docs/UNRAID.md).
