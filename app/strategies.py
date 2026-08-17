@@ -132,7 +132,7 @@ def signal_snapshot(
 ) -> SignalSnapshot:
     if len(entry_frame) < 2 or trend_frame.empty:
         raise ValueError(f"I do not have enough candles for {pair}.")
-    settings = settings or Settings()
+    settings = settings or Settings.from_env()
     prepared = add_signal_columns(entry_frame, trend_frame, settings)
     current = prepared.iloc[-1]
     required = (
@@ -178,9 +178,10 @@ def signal_snapshot(
 def should_exit(
     direction: int,
     entry_frame: pd.DataFrame,
-    confirmation_bars: int = 2,
+    confirmation_bars: int | None = None,
 ) -> bool:
-    bars = max(1, int(confirmation_bars))
+    bars = Settings.from_env().exit_confirmation_bars if confirmation_bars is None else confirmation_bars
+    bars = max(1, int(bars))
     if len(entry_frame) < bars:
         return False
     recent = entry_frame.iloc[-bars:]
