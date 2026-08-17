@@ -103,7 +103,7 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
 
   build-and-push-develop:
-    name: Build and publish develop image
+    name: Build and publish dev image
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     needs: test
     runs-on: ubuntu-latest
@@ -122,16 +122,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate develop image metadata
+      - name: Generate dev image metadata
         id: metadata
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=develop
-            type=sha,prefix=develop-sha-
+            type=raw,value=dev
+            type=sha,prefix=dev-sha-
 
-      - name: Build and push develop image
+      - name: Build and push dev image
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
           context: .
