@@ -87,6 +87,19 @@ class LegalSafetyGuardTests(unittest.TestCase):
         self.assertIn("simulated paper signals only", profile)
         self.assertIn("not affiliated with or endorsed by Bitpanda", profile)
 
+    def test_maintainer_policy_blocks_scope_creep_without_review(self):
+        policy = (ROOT / "LEGAL_SAFETY.md").read_text()
+        required = (
+            "real-money order creation, modification, cancellation, routing, or execution",
+            "custody of customer crypto assets",
+            "personalized buy/sell/hold/short recommendations",
+            "centralized copying, redistribution, resale, or sublicensing",
+            "monetization models",
+            "new legal/regulatory assessment before merge",
+        )
+        for text in required:
+            self.assertIn(text, policy)
+
 
 if __name__ == "__main__":
     unittest.main()
