@@ -61,15 +61,36 @@ class SimulationTests(unittest.TestCase):
         self.assertEqual(result["pairs"], sorted(self.settings.pairs))
         self.assertEqual(result["liquidation_model"], "paper-isolated-margin-estimate")
         self.assertEqual(len(result["strategies"]), 6)
+        diagnostic_fields = {
+            "profit_factor",
+            "expectancy_eur",
+            "average_win_eur",
+            "average_loss_eur",
+            "largest_loss_eur",
+            "long_trades",
+            "long_win_rate_pct",
+            "long_pnl_eur",
+            "short_trades",
+            "short_win_rate_pct",
+            "short_pnl_eur",
+            "avg_margin_utilization_pct",
+        }
         for strategy in result["strategies"]:
             self.assertGreater(strategy["final_equity"], 0)
             self.assertLessEqual(strategy["max_positions"], 2)
             self.assertLessEqual(strategy["max_drawdown_pct"], 10.1)
             self.assertLessEqual(
-                strategy["max_effective_leverage"], strategy["max_leverage"] + 0.01
+                strategy["max_effective_leverage"], strategy["max_leverage"] + 0.001
             )
             self.assertGreaterEqual(strategy["max_margin_utilization_pct"], 0)
+            self.assertLessEqual(strategy["max_margin_utilization_pct"], 100.01)
+            self.assertGreaterEqual(strategy["avg_margin_utilization_pct"], 0)
+            self.assertLessEqual(strategy["avg_margin_utilization_pct"], 100.01)
             self.assertGreaterEqual(strategy["liquidations"], 0)
+            self.assertTrue(diagnostic_fields.issubset(strategy))
+            self.assertEqual(
+                strategy["long_trades"] + strategy["short_trades"], strategy["trades"]
+            )
             self.assertTrue(strategy["curve"])
 
     def test_paper_cycle_is_idempotent_per_closed_candle(self):
@@ -86,6 +107,7 @@ class SimulationTests(unittest.TestCase):
             self.assertIn("max_leverage", portfolio)
             self.assertIn("margin_required", portfolio)
             self.assertIn("margin_utilization_pct", portfolio)
+            self.assertLessEqual(portfolio["margin_utilization_pct"], 100.01)
 
     def test_every_open_position_has_stop_target_and_global_count_cap(self):
         repository = Repository(self.settings.database_path, 1_000)
