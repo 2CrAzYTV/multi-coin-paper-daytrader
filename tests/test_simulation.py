@@ -59,11 +59,17 @@ class SimulationTests(unittest.TestCase):
         result = Backtester(self.settings, self.market).run(400)
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["pairs"], sorted(self.settings.pairs))
+        self.assertEqual(result["liquidation_model"], "paper-isolated-margin-estimate")
         self.assertEqual(len(result["strategies"]), 6)
         for strategy in result["strategies"]:
             self.assertGreater(strategy["final_equity"], 0)
             self.assertLessEqual(strategy["max_positions"], 2)
             self.assertLessEqual(strategy["max_drawdown_pct"], 10.1)
+            self.assertLessEqual(
+                strategy["max_effective_leverage"], strategy["max_leverage"] + 0.01
+            )
+            self.assertGreaterEqual(strategy["max_margin_utilization_pct"], 0)
+            self.assertGreaterEqual(strategy["liquidations"], 0)
             self.assertTrue(strategy["curve"])
 
     def test_paper_cycle_is_idempotent_per_closed_candle(self):
@@ -76,6 +82,10 @@ class SimulationTests(unittest.TestCase):
         self.assertEqual(second["status"], "no_new_candles")
         self.assertEqual(len(repository.list_markets()), 5)
         self.assertEqual(len(engine.serialize_portfolios()), 6)
+        for portfolio in engine.serialize_portfolios():
+            self.assertIn("max_leverage", portfolio)
+            self.assertIn("margin_required", portfolio)
+            self.assertIn("margin_utilization_pct", portfolio)
 
     def test_every_open_position_has_stop_target_and_global_count_cap(self):
         repository = Repository(self.settings.database_path, 1_000)
@@ -92,6 +102,10 @@ class SimulationTests(unittest.TestCase):
             for position in positions:
                 self.assertGreater(position["stop_price"], 0)
                 self.assertGreater(position["take_profit"], 0)
+        for position in engine.serialize_positions():
+            self.assertIn("max_leverage", position)
+            self.assertIn("margin_required", position)
+            self.assertIn("liquidation_price", position)
 
     def test_market_client_has_no_order_or_transfer_methods(self):
         public_methods = {
