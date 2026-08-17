@@ -48,7 +48,9 @@ class MarketData:
         return tuple(sorted({str(item.get("pair", "")).upper() for item in payload if str(item.get("pair", "")).upper().endswith("-EUR")}))
 
     def _fusion_history(self, pair: str, interval: str, limit: int) -> pd.DataFrame:
-        # Fusion may cap one candle response. Fetch backwards in chunks and de-duplicate.
+        # Fusion may return fewer candles than requested even when older data exists.
+        # Keep paging backwards until the requested horizon is filled, the API returns
+        # an empty page, or the oldest timestamp stops moving backwards.
         remaining = min(5_000, limit); chunks: list[pd.DataFrame] = []; before: int | None = None
         while remaining > 0:
             request_limit = min(1_000, remaining); params: dict[str, Any] = {"interval": interval, "limit": request_limit}
@@ -63,7 +65,6 @@ class MarketData:
             oldest = int(data.index.min().timestamp()); next_before = oldest - INTERVAL_SECONDS[interval]
             if before is not None and next_before >= before: break
             before = next_before
-            if len(data) < request_limit: break
         if not chunks: raise MarketDataError(f"I received no Fusion candles for {pair}.")
         data = pd.concat(chunks); data = data[~data.index.duplicated(keep="last")].sort_index().tail(limit)
         seconds = INTERVAL_SECONDS[interval]; now = datetime.now(UTC).timestamp()
