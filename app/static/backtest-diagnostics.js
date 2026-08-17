@@ -45,11 +45,54 @@
       "</tr></thead><tbody>" + body + "</tbody></table></div>";
   }
 
+  function selectorPanel(selector) {
+    if (!selector || selector.status !== "ok") return "";
+    const rows = (selector.comparisons || []).map((row) => {
+      const returnClass = Number(row.total_return_pct) >= 0 ? "positive" : "negative";
+      const recommendation = row.recommended
+        ? " <span class=\"positive\">★ " + escapeHtml(label("recommended", "empfohlen")) + "</span>"
+        : "";
+      return "<tr>" +
+        "<td><strong>Top " + escapeHtml(String(row.size)) + "</strong>" + recommendation + "</td>" +
+        "<td>" + escapeHtml((row.pairs || []).join(", ")) + "</td>" +
+        "<td class=\"" + returnClass + "\">" + escapeHtml(percent(row.total_return_pct)) + "</td>" +
+        "<td>" + escapeHtml(percent(row.max_drawdown_pct)) + "</td>" +
+        "<td>" + escapeHtml(String(row.trades ?? 0)) + "</td>" +
+        "<td>" + escapeHtml(factor(row.profit_factor)) + "</td>" +
+        "</tr>";
+    }).join("");
+    const ranking = (selector.ranking || []).map((row, index) =>
+      "<span class=\"position-tag\">" + escapeHtml(String(index + 1)) + ". " + escapeHtml(row.pair) +
+      " · " + escapeHtml(money(row.training_pnl_eur)) + "</span>"
+    ).join(" ");
+    return "<section id=\"coinSelectorPanel\" class=\"panel\" style=\"margin-top:18px\">" +
+      "<p class=\"section-kicker\">" + escapeHtml(label("Walk-forward coin selector", "Walk-Forward Coin-Selektor")) + "</p>" +
+      "<h2>" + escapeHtml(label("Out-of-sample comparison: all / 7 / 5 / 3 coins", "Out-of-Sample-Vergleich: alle / 7 / 5 / 3 Coins")) + "</h2>" +
+      "<p class=\"muted\">" + escapeHtml(label(
+        "The first 60% of the period ranks the coins. Only the later 40% is used to compare the selected baskets. Reference strategy: ",
+        "Die ersten 60 % des Zeitraums bestimmen das Ranking. Nur die späteren 40 % werden zum Vergleich der ausgewählten Körbe verwendet. Referenzstrategie: "
+      )) + escapeHtml(selector.reference_strategy_label || selector.reference_strategy_id || "–") + "</p>" +
+      "<div class=\"pair-chips\" style=\"margin-top:12px\">" + ranking + "</div>" +
+      "<div class=\"table-wrap\" style=\"margin-top:12px\"><table><thead><tr>" +
+      "<th>" + escapeHtml(label("Basket", "Korb")) + "</th>" +
+      "<th>" + escapeHtml(label("Coins", "Coins")) + "</th>" +
+      "<th>" + escapeHtml(label("Validation return", "Validierungsrendite")) + "</th>" +
+      "<th>" + escapeHtml(label("Drawdown", "Drawdown")) + "</th>" +
+      "<th>" + escapeHtml(label("Trades", "Trades")) + "</th>" +
+      "<th>" + escapeHtml(label("Profit factor", "Profit Factor")) + "</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      "<p class=\"disclaimer\">" + escapeHtml(label(
+        "The recommendation is a paper-research result from one chronological holdout, not a prediction or investment recommendation.",
+        "Die Empfehlung ist ein Paper-Research-Ergebnis aus einem chronologischen Holdout und keine Prognose oder Anlageempfehlung."
+      )) + "</p></section>";
+  }
+
   renderBacktest = function renderBacktestWithDiagnostics() {
     baseRenderBacktest();
     const result = state.backtest;
     if (!result || result.status !== "ok") return;
 
+    document.getElementById("coinSelectorPanel")?.remove();
     const cards = [...result.strategies, result.benchmark];
     const cardElements = [...document.querySelectorAll("#backtestGrid .backtest-card")];
     const elements = [...document.querySelectorAll("#backtestGrid .backtest-card .mini-stats")];
@@ -72,6 +115,10 @@
         card.insertAdjacentHTML("beforeend", "<p class=\"section-kicker\" style=\"margin-top:16px\">" + escapeHtml(label("Coin attribution", "Coin-Auswertung")) + "</p>" + table);
       }
     });
+
+    const panel = selectorPanel(result.coin_selector);
+    const grid = document.getElementById("backtestGrid");
+    if (panel && grid) grid.insertAdjacentHTML("afterend", panel);
   };
 
   const backtestButton = document.getElementById("backtestButton");
