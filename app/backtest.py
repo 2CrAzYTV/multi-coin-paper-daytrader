@@ -61,7 +61,7 @@ class Backtester:
         self.market = market
 
     def run(self, bars: int | None = None) -> dict[str, Any]:
-        selected_bars = min(1_000, bars or self.settings.backtest_bars)
+        selected_bars = min(5_000, bars or self.settings.backtest_bars)
         constraints = self.market.pair_constraints()
         frames: dict[str, pd.DataFrame] = {}
         failures: dict[str, str] = {}
