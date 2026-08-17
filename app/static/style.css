@@ -33,6 +33,10 @@ body {
 .brand-mark { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; color: #07130f; background: var(--mint); font-weight: 900; letter-spacing: -.05em; }
 .brand strong, .brand small { display: block; }
 .brand small { color: var(--muted); font-size: .72rem; margin-top: 1px; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.language-control { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .72rem; }
+.language-control select { border: 1px solid var(--line); background: #111722; color: var(--text); padding: 8px 28px 8px 10px; border-radius: 999px; outline: none; font: inherit; font-weight: 750; cursor: pointer; }
+.language-control select:focus { border-color: rgba(102, 167, 255, .65); box-shadow: 0 0 0 3px rgba(102, 167, 255, .12); }
 .paper-badge { display: inline-flex; gap: 8px; align-items: center; border: 1px solid rgba(89, 211, 165, .3); background: rgba(89, 211, 165, .08); color: #8ce6c4; padding: 8px 12px; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
 .paper-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px var(--mint); }
 
@@ -161,6 +165,11 @@ th, td { padding: 11px 9px; border-bottom: 1px solid var(--line); }
 @media (max-width: 620px) {
   .topbar, main { padding-left: 18px; padding-right: 18px; }
   .topbar { padding-top: 18px; }
+  .brand > span:last-child { display: none; }
+  .topbar-actions { gap: 7px; }
+  .language-control > span { display: none; }
+  .language-control select { max-width: 96px; }
+  .paper-badge { padding: 8px 10px; }
   .brand small { display: none; }
   .hero { padding-top: 34px; }
   h1 { font-size: 3.2rem; }

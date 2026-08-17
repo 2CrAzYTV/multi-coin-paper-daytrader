@@ -137,7 +137,7 @@ I start with `DATA_SOURCE=demo`, which produces deterministic offline data. To
 use current Bitpanda market data, I:
 
 1. create a Fusion API key with **Read** permission only;
-2. set these local values in `.env` or in the Unraid template:
+2. set these local values in my protected `.env`:
 
    ```dotenv
    DATA_SOURCE=fusion
@@ -150,6 +150,9 @@ I never commit, publish, or paste the key into a chat or issue.
 
 ## Dashboard controls
 
+- **Language:** I switch the complete dashboard between English and German.
+  The browser stores my selection, while `APP_LANGUAGE=en` or
+  `APP_LANGUAGE=de` defines the default for a new browser.
 - **Run scan now:** I retrieve the latest closed candle and never process the
   same candle twice.
 - **Run multi-coin backtest:** I simulate all configured pairs with one shared
@@ -166,6 +169,7 @@ entries per day.
 I keep all configurable values in `.env.example`. I also enforce these limits
 in code:
 
+- `APP_LANGUAGE` must be `en` or `de`
 - `RISK_PER_TRADE` at most `0.01`
 - `MAX_AGGREGATE_RISK` at most `0.02`
 - `MAX_DAILY_LOSS` at most `0.02`

@@ -11,16 +11,36 @@ class ReleaseAssetTests(unittest.TestCase):
     def test_unraid_template_tracks_latest_with_hardened_runtime(self):
         root = ET.parse(ROOT / "unraid/multi-coin-paper-daytrader.xml").getroot()
         self.assertEqual(root.tag, "Container")
+        self.assertEqual(root.findtext("Name"), "paper-trading-bot")
         self.assertEqual(root.findtext("Repository"), IMAGE)
         extra = root.findtext("ExtraParams") or ""
         for required in (
+            "--env-file=/mnt/user/appdata/paper-trading-bot/.env",
             "--user=99:100",
             "--read-only",
+            "--init",
+            "--tmpfs=/tmp:size=64m,mode=1777",
             "--security-opt=no-new-privileges:true",
             "--cap-drop=ALL",
+            "--pids-limit=2048",
             "--restart=unless-stopped",
+            "--stop-timeout=20",
         ):
             self.assertIn(required, extra)
+        configs = root.findall("Config")
+        variable_targets = {
+            item.attrib["Target"] for item in configs if item.attrib["Type"] == "Variable"
+        }
+        self.assertEqual(variable_targets, {"TZ"})
+        self.assertEqual(
+            {item.attrib["Target"] for item in configs if item.attrib["Type"] == "Path"},
+            {"/data"},
+        )
+        overview = root.findtext("Overview") or ""
+        requires = root.findtext("Requires") or ""
+        for guidance in ("PAPER_ONLY=true", "APP_LANGUAGE=en or de", "DATA_SOURCE=demo or fusion"):
+            self.assertIn(guidance, overview)
+            self.assertIn(guidance, requires)
 
     def test_main_workflow_publishes_updateable_latest_image(self):
         workflow = (ROOT / ".github/workflows/container-image.yml").read_text()
@@ -37,6 +57,9 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("@sha256:", guide)
         self.assertIn("latest completed 15-minute Fusion candle", guide)
         self.assertIn("Reset my paper accounts → Delete paper data", guide)
+        self.assertIn("--pids-limit=2048", guide)
+        self.assertIn("APP_LANGUAGE=en", guide)
+        self.assertIn("override the value from my `.env` file", guide)
         self.assertNotIn("docker login ghcr.io", guide)
 
     def test_public_facing_assets_are_english(self):
@@ -51,7 +74,6 @@ class ReleaseAssetTests(unittest.TestCase):
             "docs/UNRAID.md",
             "unraid/multi-coin-paper-daytrader.xml",
             "app/static/index.html",
-            "app/static/app.js",
         )
         german_markers = ("Veröffentlichungsstatus", "Jetzt prüfen", "Noch keine")
         for relative in paths:
@@ -65,7 +87,21 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("function formatMarketPrice(value)", javascript)
         self.assertIn("minimumFractionDigits: 4, maximumFractionDigits: 4", javascript)
         self.assertIn("minimumFractionDigits: 6, maximumFractionDigits: 6", javascript)
-        self.assertIn("${formatMarketPrice(item.price)}", javascript)
+        self.assertIn("formatMarketPrice(item.price)", javascript)
+        self.assertIn("formatMarketPrice(item.stop_price)", javascript)
+
+    def test_dashboard_supports_persistent_english_and_german(self):
+        html = (ROOT / "app/static/index.html").read_text()
+        javascript = (ROOT / "app/static/app.js").read_text()
+        environment = (ROOT / ".env.example").read_text()
+        self.assertIn('id="languageSelect"', html)
+        self.assertIn('<option value="en">English</option>', html)
+        self.assertIn('<option value="de">Deutsch</option>', html)
+        self.assertIn('const supportedLanguages = new Set(["en", "de"]);', javascript)
+        self.assertIn('window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)', javascript)
+        self.assertIn('state.config.app_language', javascript)
+        self.assertIn('state.language === "de" ? "de-DE" : "en-GB"', javascript)
+        self.assertIn("APP_LANGUAGE=en", environment)
 
     def test_release_policy_files_exist(self):
         for relative in (

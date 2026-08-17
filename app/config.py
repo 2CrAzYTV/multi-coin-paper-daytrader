@@ -36,6 +36,7 @@ def _as_pairs(value: str | None) -> tuple[str, ...]:
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "Multi-Coin Paper Daytrader"
+    app_language: str = "en"
     paper_only: bool = True
     starting_capital: float = 1_000.0
     risk_per_trade: float = 0.005
@@ -80,6 +81,7 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         settings = cls(
+            app_language=getenv("APP_LANGUAGE", "en").strip().lower(),
             paper_only=_as_bool(getenv("PAPER_ONLY"), True),
             starting_capital=_as_float("STARTING_CAPITAL", 1_000.0),
             risk_per_trade=_as_float("RISK_PER_TRADE", 0.005),
@@ -122,6 +124,8 @@ class Settings:
         return settings
 
     def validate(self) -> None:
+        if self.app_language not in {"en", "de"}:
+            raise ValueError("I require APP_LANGUAGE to be either en or de.")
         if not self.paper_only:
             raise ValueError(
                 "I require PAPER_ONLY=true. This version cannot place real-money orders."

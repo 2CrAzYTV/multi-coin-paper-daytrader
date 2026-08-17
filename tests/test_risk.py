@@ -52,6 +52,17 @@ class RiskTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             settings.validate()
 
+    def test_configuration_accepts_only_english_or_german(self):
+        Settings(app_language="en").validate()
+        Settings(app_language="de").validate()
+        with self.assertRaises(ValueError):
+            Settings(app_language="fr").validate()
+
+    def test_language_default_is_public_without_exposing_secrets(self):
+        public = Settings(app_language="de", fusion_read_api_key="secret-value").public_dict()
+        self.assertEqual(public["app_language"], "de")
+        self.assertNotIn("fusion_read_api_key", public)
+
     def test_api_key_is_never_public(self):
         public = Settings(fusion_read_api_key="secret-value").public_dict()
         self.assertNotIn("fusion_read_api_key", public)

@@ -5,7 +5,7 @@ or Docker Compose on my Unraid server. The dashboard has no login. I bind port
 `8787` only inside a trusted LAN and never expose it through a router port
 forward.
 
-## 1. I prepare persistent app data
+## 1. I prepare persistent app data and configuration
 
 I run this once in the Unraid terminal:
 
@@ -13,11 +13,30 @@ I run this once in the Unraid terminal:
 mkdir -p /mnt/user/appdata/paper-trading-bot/data
 chown -R nobody:users /mnt/user/appdata/paper-trading-bot/data
 chmod 775 /mnt/user/appdata/paper-trading-bot/data
+touch /mnt/user/appdata/paper-trading-bot/.env
+chown root:root /mnt/user/appdata/paper-trading-bot/.env
+chmod 600 /mnt/user/appdata/paper-trading-bot/.env
 ```
 
 I deliberately run the container without root privileges as UID/GID `99:100`.
 These permissions allow SQLite to create and update the database without
 weakening that runtime restriction.
+
+I edit `/mnt/user/appdata/paper-trading-bot/.env` and start with the complete
+[`.env.example`](../.env.example). These are the minimum values I verify:
+
+```dotenv
+PAPER_ONLY=true
+APP_LANGUAGE=en
+DATA_SOURCE=demo
+FUSION_READ_API_KEY=
+APP_TIMEZONE=Europe/Berlin
+DATA_DIR=/data
+```
+
+I use `APP_LANGUAGE=en` or `APP_LANGUAGE=de` as the default dashboard language.
+I keep the file owned by `root:root` with mode `600` because it can contain my
+Fusion API key.
 
 ## 2. I use the public image
 
@@ -49,49 +68,20 @@ Under **Docker → Add Container**, I enter:
 | Container Path | `/data` |
 | Host Path | `/mnt/user/appdata/paper-trading-bot/data` |
 | Access Mode | `Read/Write` |
+| Container Variable | `TZ=Europe/Berlin` |
 
 I add these **Extra Parameters**:
 
 ```text
---user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --restart=unless-stopped --stop-timeout=20
+--env-file=/mnt/user/appdata/paper-trading-bot/.env --user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20
 ```
-
-I choose one of the following configuration methods and do not mix them.
-
-### Method A: I use Unraid variables
 
 The included
 [`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
-contains my recommended fields. When I create them manually, I set at least:
-
-| Variable | My default |
-| --- | --- |
-| `PAPER_ONLY` | `true` |
-| `DATA_SOURCE` | `demo` |
-| `DATA_DIR` | `/data` |
-| `APP_TIMEZONE` | `Europe/Berlin` |
-| `TZ` | `Europe/Berlin` |
-| `PAIRS` | `BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR` |
-
-I leave the remaining values at the safe defaults from
-[`.env.example`](../.env.example) unless I deliberately test a change.
-
-### Method B: I use a local `.env`
-
-For an existing installation, I can keep
-`/mnt/user/appdata/paper-trading-bot/.env` and prepend this option to **Extra
-Parameters**:
-
-```text
---env-file=/mnt/user/appdata/paper-trading-bot/.env
-```
-
-I protect that file with:
-
-```bash
-chown root:root /mnt/user/appdata/paper-trading-bot/.env
-chmod 600 /mnt/user/appdata/paper-trading-bot/.env
-```
+already contains these values. It intentionally defines only the WebUI port,
+the persistent data path, and the container timezone. I keep every application
+setting in `.env`; adding the same application setting as an Unraid variable
+would pass an explicit `-e` option and override the value from my `.env` file.
 
 ## 4. I verify the first start
 
@@ -112,7 +102,19 @@ In demo mode I expect:
 
 I open the dashboard at `http://UNRAID-IP:8787`.
 
-## 5. I enable read-only current market data
+## 5. I select English or German
+
+I use the language selector in the top bar to switch the complete dashboard
+between English and German immediately. The browser stores my selection on that
+device. For a new browser, `APP_LANGUAGE=en` or `APP_LANGUAGE=de` in `.env`
+defines the initial language. A stored browser selection takes precedence over
+that default.
+
+Changing the selector does not restart the container and does not alter paper
+trades, strategy rules, or market data. If I change `APP_LANGUAGE` in `.env`, I
+select **Apply** or recreate the container so the new default reaches the app.
+
+## 6. I enable read-only current market data
 
 If I want current Fusion data, I set `DATA_SOURCE=fusion` and provide
 `FUSION_READ_API_KEY`. I create that key with **Read** permission only and

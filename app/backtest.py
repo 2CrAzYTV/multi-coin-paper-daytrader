@@ -410,7 +410,7 @@ class Backtester:
             curve[-1]["equity"] = round(final_value, 4)
         return {
             "strategy_id": "benchmark",
-            "label": "Gleichgewichtet halten",
+            "label": "Equal-weight hold",
             "color": "#c7ccd8",
             "final_equity": round(final_value, 2),
             "total_return_pct": round(
