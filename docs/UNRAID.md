@@ -1,6 +1,6 @@
 # Install and operate Multi-Coin Paper Daytrader on Unraid
 
-This guide is written for a new user installing the public beta on an Unraid server. No Git checkout, Docker Compose, `.env`, GitHub login, or GHCR token is required.
+This guide is written for a new user installing the public beta on an Unraid server. No Git checkout, Docker Compose, GitHub login, or GHCR token is required. A separate `.env` file is not required.
 
 ## Public release resources
 
@@ -186,7 +186,7 @@ On Unraid:
 
 The `/data` bind mount survives recreation.
 
-Important: an image update does not necessarily update an already-saved local Unraid template. If a release adds or removes template fields, recreate the container from the current public XML while keeping the same persistent `/data` mapping.
+Unraid keeps a locally saved template for an installed container. An image update does not necessarily update that saved template. If a release adds or removes template fields, recreate the container from the current public XML while keeping the same persistent `/data` mapping.
 
 `docker restart` and `--restart=unless-stopped` do not pull new images.
 
