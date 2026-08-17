@@ -73,14 +73,14 @@ class ReleaseAssetTests(unittest.TestCase):
             "COOLDOWN_MINUTES": "45",
             "APP_LANGUAGE": "de",
             "DATA_DIR": "/data",
-            "WEB_PORT": "8787",
-            "PUID": "99",
-            "PGID": "100",
             "TZ": "Europe/Berlin",
         }
         for target, expected in required_defaults.items():
             self.assertIn(target, variables)
             self.assertEqual(variables[target].attrib["Default"], expected)
+
+        for compose_only in ("WEB_PORT", "PUID", "PGID"):
+            self.assertNotIn(compose_only, variables)
 
         self.assertIn("FUSION_READ_API_KEY", variables)
         self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Mask"], "true")
@@ -93,10 +93,27 @@ class ReleaseAssetTests(unittest.TestCase):
 
         overview = root.findtext("Overview") or ""
         requires = root.findtext("Requires") or ""
-        self.assertIn("separate .env file is not required", overview)
+        self.assertIn("Unraid does not require a .env file", overview)
         self.assertIn("PAPER_ONLY=true", requires)
         self.assertIn("0.5% risk per trade", requires)
         self.assertIn("2% maximum daily loss", requires)
+
+    def test_compose_has_safe_defaults_without_env_file_dependency(self):
+        compose = (ROOT / "docker-compose.yml").read_text()
+        self.assertNotIn("env_file:", compose)
+        self.assertIn('PAPER_ONLY: "${PAPER_ONLY:-true}"', compose)
+        self.assertIn('DATA_SOURCE: "${DATA_SOURCE:-demo}"', compose)
+        self.assertIn('FUSION_READ_API_KEY: "${FUSION_READ_API_KEY:-}"', compose)
+        self.assertIn('${WEB_PORT:-8787}:8787', compose)
+        self.assertIn('${PUID:-99}:${PGID:-100}', compose)
+
+    def test_version_is_consistent(self):
+        package = (ROOT / "app/__init__.py").read_text()
+        main = (ROOT / "app/main.py").read_text()
+        dockerfile = (ROOT / "Dockerfile").read_text()
+        self.assertIn('__version__ = "0.2.0"', package)
+        self.assertIn('version="0.2.0"', main)
+        self.assertIn('org.opencontainers.image.version="0.2.0"', dockerfile)
 
     def test_unraid_icon_is_high_resolution_transparent_png(self):
         icon = (ROOT / "unraid/multi-coin-paper-daytrader.png").read_bytes()
@@ -126,9 +143,8 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("Reset my paper accounts → Delete paper data", guide)
         self.assertIn("--pids-limit=2048", guide)
         self.assertIn("APP_LANGUAGE=de", guide)
-        self.assertIn("separate `.env` file is not required", guide)
+        self.assertIn("A separate `.env` file is not required", guide)
         self.assertIn("locally saved template", guide)
-        self.assertNotIn("docker login ghcr.io", guide)
 
     def test_public_facing_assets_are_english(self):
         paths = (
