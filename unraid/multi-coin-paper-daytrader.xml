@@ -13,7 +13,7 @@
   <Category>Tools: Other:</Category>
   <WebUI>http://[IP]:[PORT:8787]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.svg</Icon>
+  <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.png</Icon>
   <ExtraParams>--env-file=/mnt/user/appdata/paper-trading-bot/.env --user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20</ExtraParams>
   <PostArgs/>
   <CPUset/>

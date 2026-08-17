@@ -1,5 +1,6 @@
 import unittest
 import xml.etree.ElementTree as ET
+from struct import unpack
 from pathlib import Path
 
 
@@ -13,6 +14,11 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertEqual(root.tag, "Container")
         self.assertEqual(root.findtext("Name"), "paper-trading-bot")
         self.assertEqual(root.findtext("Repository"), IMAGE)
+        self.assertEqual(
+            root.findtext("Icon"),
+            "https://raw.githubusercontent.com/2CrAzYTV/"
+            "multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.png",
+        )
         extra = root.findtext("ExtraParams") or ""
         for required in (
             "--env-file=/mnt/user/appdata/paper-trading-bot/.env",
@@ -41,6 +47,12 @@ class ReleaseAssetTests(unittest.TestCase):
         for guidance in ("PAPER_ONLY=true", "APP_LANGUAGE=en or de", "DATA_SOURCE=demo or fusion"):
             self.assertIn(guidance, overview)
             self.assertIn(guidance, requires)
+
+    def test_unraid_icon_is_high_resolution_transparent_png(self):
+        icon = (ROOT / "unraid/multi-coin-paper-daytrader.png").read_bytes()
+        self.assertEqual(icon[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual(unpack(">II", icon[16:24]), (512, 512))
+        self.assertEqual(icon[25], 6, "I require an RGBA PNG with transparency.")
 
     def test_main_workflow_publishes_updateable_latest_image(self):
         workflow = (ROOT / ".github/workflows/container-image.yml").read_text()
