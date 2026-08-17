@@ -4,6 +4,23 @@ I welcome focused bug fixes, tests, documentation improvements, and paper-only
 strategy research. Before a large change, I recommend opening an issue so I can
 review its purpose and safety impact.
 
+## Branch model
+
+The project uses a protected release workflow:
+
+- `main` is the stable public/Community Applications branch.
+- `develop` is the integration branch for the next release.
+- New work starts from `develop` on a short-lived branch such as `feature/...`,
+  `fix/...`, or `docs/...`.
+- Feature/fix pull requests target `develop` first.
+- A release pull request merges `develop` into `main` only when the intended
+  release is complete and all required checks succeed.
+- `:latest` is published only from `main` (or release tags), never from
+  `develop`.
+
+No change is considered ready for merge while a required GitHub Actions check
+is pending or failing.
+
 ## Safety boundaries I will not relax
 
 I will not accept a contribution that adds or enables:
@@ -15,6 +32,9 @@ I will not accept a contribution that adds or enables:
 - logging, serving, or embedding API keys and other secrets
 - silent increases to the hard risk limits
 - claims that the unauthenticated dashboard is safe for direct internet access
+
+Any intentional change to the legal/regulatory boundaries in `LEGAL_SAFETY.md`
+requires a fresh review before release.
 
 ## How I develop locally
 
@@ -44,6 +64,8 @@ docker build --pull -t multi-coin-paper-daytrader:test .
   data.
 - I expect the pull-request checklist to be completed.
 - I record user-visible changes under `Unreleased` in `CHANGELOG.md`.
+- New feature/fix PRs normally target `develop`; `main` is reserved for release
+  PRs and urgent production fixes.
 
 By contributing, the contributor agrees that I may publish the contribution
 under this project's [MIT License](LICENSE).
