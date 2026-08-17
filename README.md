@@ -25,8 +25,7 @@ I deliberately keep this project **paper only**:
 - I refuse to start when `PAPER_ONLY=false`.
 - If I enable live Fusion market data, I use an API key with **Read** permission
   only. I never enable **Trade** or **Transfer**.
-- I keep the key in my local `.env`, exclude it from Git, and never return it
-  through the dashboard.
+- I never return the Fusion API key through the dashboard or public config API.
 
 I follow Bitpanda's official
 [Fusion API key documentation](https://docs.fusion.bitpanda.com/api-key-generation-363384m0)
@@ -84,24 +83,35 @@ I publish the ready-to-run image at:
 ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-I do not need Git or Docker Compose on Unraid. My complete guide covers the
-native **Add Container** form, the included Unraid XML template, hardened
-runtime options, persistent storage, health checks, updates, backups, rollback,
-and troubleshooting:
+I do not need Git, Docker Compose, or a `.env` file on Unraid. The native Unraid
+template exposes the complete application configuration as container variables,
+including the masked **Bitpanda Key** field.
+
+My complete guide covers the native **Add Container** form, the included Unraid
+XML template, hardened runtime options, persistent storage, health checks,
+updates, backups, rollback, and troubleshooting:
 
 ➡️ **[How I install and operate the bot on Unraid](docs/UNRAID.md)**
 
 I open the dashboard at `http://UNRAID-IP:8787`. The dashboard has no login, so
 I expose it only inside a trusted LAN and never directly to the internet.
 
+### Important note about the Fusion key on Unraid
+
+`Mask="true"` hides the key in the Unraid form, but masking is **not encryption**.
+Unraid may persist container-variable values in its local Docker template
+configuration. I therefore never share my local template XML or `/boot/config`
+backup while it contains a real API key. I use a Fusion key with **Read**
+permission only.
+
 ## Source installation
 
-When I develop or build locally, I use Docker Compose:
+When I develop or build locally, Docker Compose works without creating a `.env`
+file because the compose file contains safe defaults:
 
 ```bash
 git clone https://github.com/2CrAzYTV/multi-coin-paper-daytrader.git paper-trading-bot
 cd paper-trading-bot
-cp .env.example .env
 mkdir -p data
 chown -R nobody:users data
 docker compose up -d --build
@@ -114,8 +124,22 @@ docker compose ps
 docker compose logs --tail=100 paper-trading-bot
 ```
 
-I keep the SQLite database at `./data/paper_trading.sqlite3`. My local `.env`
-and database remain outside version control.
+I keep the SQLite database at `./data/paper_trading.sqlite3` outside version
+control.
+
+A `.env` file remains **optional** for source/Compose users who want persistent
+local overrides. Docker Compose automatically reads it for variable
+interpolation, but this project no longer requires `env_file:` and does not
+need `.env` to start in demo mode. `.env.example` is only a reference/template.
+
+For example:
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+I never commit a populated `.env`.
 
 ## Updates
 
@@ -133,20 +157,20 @@ rollback in [docs/UNRAID.md](docs/UNRAID.md#updates-backup-and-rollback).
 
 ## Demo and read-only Fusion data
 
-I start with `DATA_SOURCE=demo`, which produces deterministic offline data. To
-use current Bitpanda market data, I:
+I start with `DATA_SOURCE=demo`, which produces deterministic offline data. On
+Unraid I switch **Market Data Source** to `fusion` and fill the masked
+**Bitpanda Key** field.
 
-1. create a Fusion API key with **Read** permission only;
-2. set these local values in my protected `.env`:
+For Docker Compose/source usage I can either export variables in the shell or
+use the optional `.env` file. Example with shell variables:
 
-   ```dotenv
-   DATA_SOURCE=fusion
-   FUSION_READ_API_KEY=MY_LOCAL_READ_ONLY_KEY
-   ```
+```bash
+DATA_SOURCE=fusion \
+FUSION_READ_API_KEY='MY_LOCAL_READ_ONLY_KEY' \
+docker compose up -d --build
+```
 
-3. recreate the container.
-
-I never commit, publish, or paste the key into a chat or issue.
+I never commit, publish, or paste the real key into a chat or issue.
 
 ## Dashboard controls
 
@@ -166,8 +190,11 @@ entries per day.
 
 ## Configuration
 
-I keep all configurable values in `.env.example`. I also enforce these limits
-in code:
+The application reads standard environment variables. Unraid provides them from
+the native template, while Docker Compose provides safe defaults and accepts
+optional shell/`.env` overrides. `.env.example` documents the available values.
+
+I also enforce these limits in code:
 
 - `APP_LANGUAGE` must be `en` or `de`
 - `RISK_PER_TRADE` at most `0.01`
@@ -186,6 +213,7 @@ python -m unittest discover -s tests -v
 python -m compileall -q app tests
 node --check app/static/app.js
 python -c "import xml.etree.ElementTree as ET; ET.parse('unraid/multi-coin-paper-daytrader.xml')"
+docker compose config
 ```
 
 For pull requests, CI also builds the complete Docker image before I merge.
