@@ -1,36 +1,35 @@
-# Sicherheitsrichtlinie
+# Security Policy
 
-## Unterstützte Versionen
+## Versions I support
 
-Sicherheitskorrekturen werden für den aktuellen Stand von `main` und den
-neuesten veröffentlichten Versions-Tag vorbereitet. Ältere Tags erhalten
-grundsätzlich keine separaten Backports.
+I prepare security fixes for the current `main` branch and the latest tagged
+release. I do not normally backport fixes to older tags.
 
-## Schwachstellen vertraulich melden
+## How I receive vulnerability reports
 
-Bitte keine Zugangsdaten, API-Schlüssel, Datenbankinhalte oder noch nicht
-behobenen Schwachstellen in ein öffentliches Issue schreiben.
+I ask reporters not to place credentials, API keys, database contents, or
+unfixed vulnerability details in a public issue.
 
-1. Wenn im GitHub-Tab **Security** die Funktion **Report a vulnerability**
-   angeboten wird, darüber einen privaten Bericht erstellen.
-2. Falls die Funktion nicht verfügbar ist, ein Issue ohne technische Details
-   mit dem Titel `Security contact requested` eröffnen. Der Repository-Inhaber
-   stellt anschließend einen privaten Kommunikationsweg bereit.
+1. If GitHub shows **Report a vulnerability** on the **Security** tab, I ask the
+   reporter to use that private form.
+2. If private reporting is unavailable, I ask for an issue titled
+   `Security contact requested` without technical details. I will then arrange
+   a private communication channel.
 
-Hilfreich sind betroffene Version, reproduzierbare Schritte, Auswirkung und ein
-möglicher Fix. Zugangsdaten müssen immer entfernt oder durch Platzhalter ersetzt
-werden.
+I find the affected version, reproducible steps, impact, and a possible fix
+helpful. I require all credentials to be removed or replaced with placeholders.
 
-## Sicherheitsmodell
+## My security model
 
-- Die Anwendung muss mit `PAPER_ONLY=true` laufen; `false` verhindert den Start.
-- Der Marktdaten-Client darf ausschließlich lesende Endpunkte verwenden.
-- Ein optionaler Fusion-Schlüssel darf nur das Recht **Read**, niemals **Trade**
-  oder **Transfer**, besitzen.
-- Das Dashboard besitzt keine Benutzeranmeldung. Es ist ausschließlich für ein
-  vertrauenswürdiges LAN oder ein vorgeschaltetes, abgesichertes Gateway
-  vorgesehen und darf nicht direkt ins Internet veröffentlicht werden.
-- `.env`, Datenbanken, Backups und Registry-Tokens gehören nicht ins Repository
-  und nicht in Fehlerberichte.
+- I require `PAPER_ONLY=true`; I refuse to start when it is `false`.
+- I expose read-only market-data operations and no order, account, or transfer
+  operation.
+- If I use a Fusion key, I grant **Read** permission only, never **Trade** or
+  **Transfer**.
+- I run the container as UID/GID `99:100`, with a read-only root filesystem,
+  no Linux capabilities, and `no-new-privileges`.
+- I keep the dashboard inside a trusted LAN or behind a separately secured
+  authenticated gateway because the application itself has no login.
+- I never commit `.env`, databases, backups, API keys, or registry tokens.
 
-Eine Anleitung zum gehärteten Betrieb steht in [docs/UNRAID.md](docs/UNRAID.md).
+I document my hardened deployment in [docs/UNRAID.md](docs/UNRAID.md).

@@ -1,13 +1,13 @@
-# Installation und Betrieb auf Unraid
+# How I install and operate the bot on Unraid
 
-Diese Anleitung verwendet das veröffentlichte Container-Image und benötigt
-weder einen Git-Checkout noch Docker Compose. Das Dashboard besitzt keine
-Anmeldung: Port `8787` nur im vertrauenswürdigen LAN freigeben und niemals
-direkt per Router-Portfreigabe ins Internet veröffentlichen.
+I use the published container image directly, so I do not need a Git checkout
+or Docker Compose on my Unraid server. The dashboard has no login. I bind port
+`8787` only inside a trusted LAN and never expose it through a router port
+forward.
 
-## 1. Appdata vorbereiten
+## 1. I prepare persistent app data
 
-Im Unraid-Terminal einmalig ausführen:
+I run this once in the Unraid terminal:
 
 ```bash
 mkdir -p /mnt/user/appdata/paper-trading-bot/data
@@ -15,32 +15,30 @@ chown -R nobody:users /mnt/user/appdata/paper-trading-bot/data
 chmod 775 /mnt/user/appdata/paper-trading-bot/data
 ```
 
-Der Container läuft absichtlich ohne Root-Rechte als UID/GID `99:100`. Ohne
-passende Rechte kann SQLite die Datenbank nicht erstellen oder aktualisieren.
+I deliberately run the container without root privileges as UID/GID `99:100`.
+These permissions allow SQLite to create and update the database without
+weakening that runtime restriction.
 
-## 2. Privates oder öffentliches Image abrufen
+## 2. I use the public image
 
-Solange das GHCR-Paket privat ist, benötigt Unraid einen klassischen GitHub-PAT
-mit mindestens `read:packages`. Den Token niemals als Klartext in einen Befehl,
-Chat oder eine Datei schreiben:
+I use this repository value in Unraid:
 
-```bash
-read -rsp 'GHCR-Token: ' GHCR_TOKEN
-printf '\n'
-printf '%s' "$GHCR_TOKEN" | \
-  docker login ghcr.io -u 2CrAzYTV --password-stdin
-unset GHCR_TOKEN
+```text
+ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-Nach einer späteren öffentlichen Freigabe ist für dieses Image kein Login mehr
-nötig. Ein gespeicherter Login kann dann mit `docker logout ghcr.io` entfernt
-werden.
+The public image requires no GHCR token or `docker login`. If I want to test
+the pull first, I run:
 
-## 3. Container in Unraid anlegen
+```bash
+docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
+```
 
-Unter **Docker → Add Container** folgende Kernwerte setzen:
+## 3. I create the container
 
-| Feld | Wert |
+Under **Docker → Add Container**, I enter:
+
+| Field | My value |
 | --- | --- |
 | Name | `paper-trading-bot` |
 | Repository | `ghcr.io/2crazytv/multi-coin-paper-daytrader:latest` |
@@ -52,22 +50,21 @@ Unter **Docker → Add Container** folgende Kernwerte setzen:
 | Host Path | `/mnt/user/appdata/paper-trading-bot/data` |
 | Access Mode | `Read/Write` |
 
-Unter **Extra Parameters** eintragen:
+I add these **Extra Parameters**:
 
 ```text
 --user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --restart=unless-stopped --stop-timeout=20
 ```
 
-Die Umgebungsvariablen können auf zwei Arten gesetzt werden. Nicht beide
-Methoden mischen.
+I choose one of the following configuration methods and do not mix them.
 
-### Variante A: Unraid-Felder
+### Method A: I use Unraid variables
 
-Die Datei [`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
-enthält alle empfohlenen Variablen als fertige Unraid-Template-Felder. Für eine
-manuelle Anlage müssen mindestens diese Variablen gesetzt werden:
+The included
+[`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
+contains my recommended fields. When I create them manually, I set at least:
 
-| Variable | Standardwert |
+| Variable | My default |
 | --- | --- |
 | `PAPER_ONLY` | `true` |
 | `DATA_SOURCE` | `demo` |
@@ -76,30 +73,29 @@ manuelle Anlage müssen mindestens diese Variablen gesetzt werden:
 | `TZ` | `Europe/Berlin` |
 | `PAIRS` | `BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR` |
 
-Die übrigen Werte aus [`.env.example`](../.env.example) sind bereits sichere
-Anwendungsstandards und können bei Bedarf als weitere Variablen hinzugefügt
-werden.
+I leave the remaining values at the safe defaults from
+[`.env.example`](../.env.example) unless I deliberately test a change.
 
-### Variante B: lokale `.env`
+### Method B: I use a local `.env`
 
-Bestehende Installationen können stattdessen
-`/mnt/user/appdata/paper-trading-bot/.env` verwenden. Dann zusätzlich unter
-**Extra Parameters** vor den obigen Optionen eintragen:
+For an existing installation, I can keep
+`/mnt/user/appdata/paper-trading-bot/.env` and prepend this option to **Extra
+Parameters**:
 
 ```text
 --env-file=/mnt/user/appdata/paper-trading-bot/.env
 ```
 
-Die Datei schützen:
+I protect that file with:
 
 ```bash
 chown root:root /mnt/user/appdata/paper-trading-bot/.env
 chmod 600 /mnt/user/appdata/paper-trading-bot/.env
 ```
 
-## 4. Start prüfen
+## 4. I verify the first start
 
-Nach **Apply** sollte Unraid den Container als `healthy` anzeigen. Zusätzlich:
+After I select **Apply**, I expect Unraid to report `healthy`. I also run:
 
 ```bash
 docker inspect paper-trading-bot \
@@ -108,44 +104,47 @@ curl -fsS http://127.0.0.1:8787/health
 docker logs --tail=50 paper-trading-bot
 ```
 
-Erwartete Health-Antwort im Demo-Modus:
+In demo mode I expect:
 
 ```json
 {"status":"ok","paper_only":true,"data_source":"demo"}
 ```
 
-Dashboard: `http://UNRAID-IP:8787`
+I open the dashboard at `http://UNRAID-IP:8787`.
 
-## Echte, ausschließlich lesende Marktdaten
+## 5. I enable read-only current market data
 
-Für Fusion-Marktdaten `DATA_SOURCE=fusion` setzen und
-`FUSION_READ_API_KEY` ergänzen. Der Schlüssel darf ausschließlich die
-Berechtigung **Read** besitzen. **Trade** und **Transfer** müssen deaktiviert
-bleiben. Nach der Änderung **Apply** wählen, damit Unraid den Container neu
-erstellt.
+If I want current Fusion data, I set `DATA_SOURCE=fusion` and provide
+`FUSION_READ_API_KEY`. I create that key with **Read** permission only and
+leave **Trade** and **Transfer** disabled. I then select **Apply** so Unraid
+recreates the container.
 
-## Updates
+## Updates, backup, and rollback
 
-Ein neuer Commit auf `main` kann ein neues `:latest`-Image bauen. Der laufende
-Container aktualisiert sich dadurch **nicht** selbst. Auch `docker restart` und
-`--restart=unless-stopped` laden kein neues Image.
+### How my updates work
 
-Während der Testphase wird ein kontrolliertes manuelles Update empfohlen:
+Every successful push to `main` runs tests and publishes a new `:latest`
+image. The workflow also publishes an immutable `sha-<commit>` tag. Because my
+Unraid template tracks `:latest`, Unraid can detect a changed registry digest.
 
-1. Vorher ein Datenbank-Backup erstellen.
-2. Unraid unter **Docker** öffnen und **Check for Updates** wählen.
-3. Beim Container **Update** beziehungsweise **Force Update** ausführen.
-4. Health, Logs und Dashboard erneut prüfen.
+I install an update with:
 
-Unraid zieht das Image und erstellt den Container aus seiner gespeicherten
-Vorlage neu. Der Bind-Mount `/mnt/user/appdata/paper-trading-bot/data` bleibt
-dabei erhalten. Bei einem privaten Paket muss der GHCR-Login weiterhin gültig
-sein. Ein unbeaufsichtigter Auto-Updater wird für die Erprobungsphase nicht
-empfohlen.
+1. **Docker → Check for Updates**
+2. **Update** or **Force Update** on `paper-trading-bot`
+3. verify health, logs, and the dashboard
 
-## Backup und Wiederherstellung
+Unraid pulls the changed image and recreates the container from its saved
+template. My bind mount at
+`/mnt/user/appdata/paper-trading-bot/data` survives this process.
 
-Für ein konsistentes Backup den Container kurz stoppen:
+I know that `docker restart` and `--restart=unless-stopped` do not pull a new
+image. They only restart the locally installed image. The `:latest` workflow
+is also compatible with an Unraid automatic-update feature if I deliberately
+enable one, but I prefer controlled updates for a trading simulation.
+
+### How I back up SQLite
+
+For a consistent backup, I briefly stop the container:
 
 ```bash
 docker stop paper-trading-bot
@@ -155,7 +154,9 @@ cp -a \
 docker start paper-trading-bot
 ```
 
-Vor einem Update den bisherigen Digest notieren:
+### How I record and restore an image digest
+
+Before an update, I record the exact installed digest:
 
 ```bash
 docker image inspect \
@@ -163,19 +164,25 @@ docker image inspect \
   --format '{{index .RepoDigests 0}}'
 ```
 
-Für einen Rollback im Unraid-Template vorübergehend statt `:latest` die
-vollständige Ausgabe mit `@sha256:…` als Repository verwenden und **Apply**
-wählen. Tags wie `latest` sind veränderlich; ein Digest bezeichnet exakt ein
-Image.
+To roll back, I temporarily replace `:latest` in the Unraid **Repository**
+field with the full `@sha256:…` reference and select **Apply**. I use a digest
+because it identifies one immutable image, while `latest` moves.
 
-## Fehlerdiagnose
+## Troubleshooting
 
-### `unauthorized` beim Pull
+### I receive `unauthorized` while pulling
 
-Das Paket ist noch privat oder der Token besitzt kein `read:packages`. Erneut
-wie oben anmelden, ohne den Token in die Shell-Historie zu schreiben.
+The public image does not require a registry login. I remove stale credentials
+and retry:
 
-### Container läuft, WebUI öffnet nicht
+```bash
+docker logout ghcr.io
+docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
+```
+
+### My container runs but the WebUI does not open
+
+I check the binding and both local routes:
 
 ```bash
 docker ps --filter 'name=paper-trading-bot'
@@ -184,11 +191,10 @@ curl -I --max-time 5 http://127.0.0.1:8787/
 curl -I --max-time 5 http://UNRAID-IP:8787/
 ```
 
-Port `8787/tcp` muss auf `0.0.0.0:8787` oder die gewünschte LAN-Adresse
-abgebildet sein. Zusätzlich Browser-Cache, lokale Firewall und VLAN-Regeln
-prüfen.
+I expect `8787/tcp` to map to `0.0.0.0:8787` or my intended LAN address. I
+also check the browser cache, local firewall, and VLAN rules.
 
-### `Permission denied` für `/data`
+### I receive `Permission denied` for `/data`
 
-Die Rechte aus Abschnitt 1 erneut setzen. Den Container nicht als Root starten,
-um das Rechteproblem zu umgehen.
+I repeat the ownership commands from section 1. I do not work around the problem
+by running the container as root.

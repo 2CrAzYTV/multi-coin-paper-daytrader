@@ -1,26 +1,24 @@
-# Mitwirken
+# Contributing
 
-Beiträge zu Fehlerbehebungen, Dokumentation, Tests und neuen Paper-Strategien
-sind willkommen. Bitte vor größeren Änderungen zuerst ein Issue anlegen, damit
-Ziel und Sicherheitsfolgen abgestimmt werden können.
+I welcome focused bug fixes, tests, documentation improvements, and paper-only
+strategy research. Before a large change, I recommend opening an issue so I can
+review its purpose and safety impact.
 
-## Unveränderliche Sicherheitsgrenzen
+## Safety boundaries I will not relax
 
-Ein Beitrag darf diese Regeln nicht aufweichen:
+I will not accept a contribution that adds or enables:
 
-- keine Methoden zum Erstellen, Ändern, Stornieren oder Bestätigen echter Orders
-- keine Konto-, Einzahlungs-, Auszahlungs- oder Transferfunktionen
-- externe Börsenkommunikation ausschließlich lesend
-- `PAPER_ONLY=false` muss den Programmstart weiterhin verhindern
-- API-Schlüssel und andere Geheimnisse dürfen weder geloggt noch ausgeliefert
-  oder in Tests eingebettet werden
-- bestehende harte Risikoobergrenzen dürfen nicht still erhöht werden
-- das Dashboard darf nicht als öffentlich authentifizierter Dienst dargestellt
-  werden; es besitzt keine Anmeldung
+- real order creation, modification, cancellation, or confirmation
+- account, deposit, withdrawal, or transfer operations
+- write access to an exchange API
+- a way to start successfully with `PAPER_ONLY=false`
+- logging, serving, or embedding API keys and other secrets
+- silent increases to the hard risk limits
+- claims that the unauthenticated dashboard is safe for direct internet access
 
-## Lokale Entwicklung
+## How I develop locally
 
-Python 3.12 und Node.js werden für die gleichen Prüfungen wie in CI benötigt:
+I use Python 3.12 and Node.js and run:
 
 ```bash
 python -m venv .venv
@@ -32,21 +30,20 @@ python -m compileall -q app tests
 node --check app/static/app.js
 ```
 
-Das Container-Image lässt sich anschließend lokal prüfen:
+I validate the complete container with:
 
 ```bash
 docker build --pull -t multi-coin-paper-daytrader:test .
 ```
 
-## Pull Requests
+## What I expect in a pull request
 
-- Einen kurzen, sachlichen Titel und eine nachvollziehbare Beschreibung nutzen.
-- Verhaltensänderungen mit Tests und Benutzerdokumentation ergänzen.
-- Keine generierten Datenbanken, `.env`, Tokens oder persönlichen Marktdaten
-  einchecken.
-- Die Checkliste in der Pull-Request-Vorlage vollständig prüfen.
-- Änderungen am Verhalten im Abschnitt `Unreleased` von `CHANGELOG.md`
-  dokumentieren.
+- I expect a concise title and a clear explanation of the problem and change.
+- I expect tests and user documentation for behavioural changes.
+- I reject generated databases, `.env`, tokens, credentials, and personal market
+  data.
+- I expect the pull-request checklist to be completed.
+- I record user-visible changes under `Unreleased` in `CHANGELOG.md`.
 
-Mit einem Beitrag erklärst du dich damit einverstanden, ihn unter der
-[MIT-Lizenz](LICENSE) des Projekts bereitzustellen.
+By contributing, the contributor agrees that I may publish the contribution
+under this project's [MIT License](LICENSE).

@@ -16,6 +16,6 @@ async def scheduler_loop(
             await asyncio.to_thread(engine.run_once)
         except Exception as exc:  # scheduler must survive remote-data failures
             repository.add_event(
-                "error", None, f"Automatischer Paper-Lauf fehlgeschlagen: {exc}"
+                "error", None, f"I could not complete the automatic paper cycle: {exc}"
             )
         await asyncio.sleep(settings.poll_seconds)

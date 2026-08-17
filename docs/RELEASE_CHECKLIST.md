@@ -1,79 +1,47 @@
-# Checkliste für die erste öffentliche Veröffentlichung
+# Maintainer checklist for the visibility switch
 
-Diese Liste ist für die geplante Umstellung von privater Erprobung auf eine
-öffentliche MIT-Veröffentlichung gedacht. Ein öffentliches GHCR-Paket kann laut
-GitHub anschließend nicht wieder auf privat zurückgestellt werden. Diesen
-Schritt deshalb erst nach bewusstem Abschluss der Testphase ausführen.
+I keep this checklist for the final repository and container-package visibility
+change. All public usage documentation assumes that both resources are public.
+I do not change either visibility setting as part of normal code updates.
 
-## 1. Erprobung abschließen
+## Preparation I complete before the switch
 
-- [ ] Mindestens 3–7 Tage stabiler Dauerbetrieb auf Unraid
-- [ ] Health-Status dauerhaft `healthy`; keine ungeklärten Neustarts
-- [ ] Dashboard, manueller Paper-Lauf und Multi-Coin-Backtest geprüft
-- [ ] Tagesabschluss und Neustart mit offenen beziehungsweise geschlossenen
-      Paper-Positionen beobachtet
-- [ ] SQLite-Daten bleiben nach Neustart und Image-Neuerstellung erhalten
-- [ ] Demo-Modus geprüft
-- [ ] Optionaler Fusion-Modus ausschließlich mit einem Read-only-Key geprüft
-- [ ] Keine echte Order-, Konto-, Trade- oder Transferfunktion vorhanden
+- [x] I keep the application technically paper only.
+- [x] I verify that the market client has no order, account, trade, or transfer
+      method.
+- [x] I run the automated Python, JavaScript, XML, and release-asset checks.
+- [x] I build the complete container in pull-request CI.
+- [x] I verify persistent SQLite data across container recreation.
+- [x] I provide an MIT License, disclaimer, security policy, support policy,
+      contribution guide, and Code of Conduct.
+- [x] I provide a native hardened Unraid template and an English operating guide.
+- [x] I publish `latest` from successful `main` builds and immutable
+      `sha-<commit>` tags.
+- [x] I exclude `.env`, API keys, tokens, databases, and backups from Git.
+- [x] I provide Dependabot, issue forms, CODEOWNERS, and a pull-request template.
 
-## 2. Repository prüfen
+## The only publication actions I perform manually
 
-- [ ] CI auf `main` vollständig grün
-- [ ] `python -m unittest discover -s tests -v` erfolgreich
-- [ ] `python -m compileall -q app tests` erfolgreich
-- [ ] `node --check app/static/app.js` erfolgreich
-- [ ] Unraid-XML ist wohlgeformt und enthält das korrekte Image
-- [ ] README, Unraid-Anleitung und Changelog entsprechen dem Release
-- [ ] MIT-Lizenz, Haftungsausschluss, Security- und Beitragsrichtlinien geprüft
-- [ ] Gesamten Git-Verlauf auf `.env`, PATs, API-Schlüssel, Datenbanken und
-      persönliche Informationen prüfen
-- [ ] GitHub Secret Scanning und Dependabot aktiv beziehungsweise grün
-- [ ] Offene Sicherheits- und Blocker-Issues geklärt
-
-## 3. Container prüfen
-
-- [ ] Image auf sauberem `linux/amd64`-Host neu ziehen und starten
-- [ ] Container läuft als `99:100`, read-only, ohne Capabilities und mit
-      `no-new-privileges`
-- [ ] `/data` ist der einzige dauerhaft beschreibbare Bind-Mount
-- [ ] Health-Endpunkt meldet `paper_only: true`
-- [ ] Aktuellen funktionierenden Digest und Datenbank-Backup notieren
-- [ ] Rollback auf den vorherigen Digest einmal getestet
-
-## 4. Sichtbarkeit bewusst umstellen
-
-- [ ] Repository-Inhaber bestätigt ausdrücklich die Veröffentlichung
-- [ ] GitHub-Repository von **Private** auf **Public** stellen
-- [ ] Repository anonym beziehungsweise abgemeldet öffnen und Dokumentation
-      sowie Lizenz prüfen
-- [ ] GHCR-Paket erst danach bewusst von **Private** auf **Public** stellen
-- [ ] Warnung bestätigen: Das öffentliche Paket kann nicht wieder privat werden
-- [ ] Abgemeldet testen:
+- [ ] In **Repository Settings → General → Danger Zone**, I change the
+      repository visibility to **Public**.
+- [ ] On the GHCR package settings page, I change the container package
+      visibility to **Public**.
+- [ ] I acknowledge that GitHub does not allow a public container package to be
+      changed back to private.
+- [ ] In a logged-out environment, I verify:
 
   ```bash
   docker logout ghcr.io
   docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
   ```
 
-- [ ] Keine privaten Quellarchive, Backups oder Tokens als Artefakt enthalten
+- [ ] I open the repository and its documentation while logged out.
+- [ ] I run the public Unraid installation on a clean test container.
 
-## 5. Release erstellen
+## Optional work after publication
 
-- [ ] `Unreleased`-Änderungen in eine Versionssektion mit Datum verschieben
-- [ ] Version in Anwendung und Docker-Label synchronisieren
-- [ ] Signierten oder geschützten Tag im Format `vX.Y.Z` erstellen
-- [ ] GitHub Actions für Tag und Image erfolgreich
-- [ ] Release Notes mit Funktionen, Sicherheitsgrenzen, Upgrade- und
-      Rollback-Hinweisen veröffentlichen
-- [ ] Versionstag und Digest dokumentieren
-
-## 6. Nachbereitung
-
-- [ ] Nicht mehr benötigte PATs und temporäre Deploy Keys widerrufen
-- [ ] Lokale Registry-Anmeldedaten entfernen, wenn öffentlicher Pull genügt
-- [ ] Öffentliche Installation anhand `docs/UNRAID.md` auf einem sauberen System
-      nachvollziehen
-- [ ] Erst nach erfolgreicher öffentlicher Installation eine Einreichung bei
-      Unraid Community Applications erwägen
-- [ ] Sicherheitsmeldungen und Dependency-Updates regelmäßig prüfen
+- [ ] I create a version tag in the form `vX.Y.Z` when I want a formal release.
+- [ ] I move the `Unreleased` changelog entries into a dated version section.
+- [ ] I submit the template to Unraid Community Applications only after the
+      anonymous installation test succeeds.
+- [ ] I revoke temporary deploy keys or package tokens I no longer need.

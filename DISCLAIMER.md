@@ -1,20 +1,17 @@
-# Haftungsausschluss
+# Disclaimer
 
-Dieses Projekt ist eine technische Lern- und Simulationsumgebung. Es stellt
-keine Anlage-, Finanz-, Steuer- oder Rechtsberatung dar und gibt keine
-Empfehlung zum Kauf oder Verkauf eines Vermögenswertes.
+I provide this project as a technical learning and simulation environment. I do
+not provide investment, financial, tax, or legal advice, and I do not recommend
+buying or selling any asset.
 
-Alle Orders, Kontostände, Gewinne und Verluste werden ausschließlich simuliert.
-Backtests und Paper-Trading bilden insbesondere Liquidität, Ausführung,
-Kurslücken, Gebühren, Slippage, Steuern und Betriebsstörungen nicht vollständig
-ab. Frühere oder simulierte Ergebnisse lassen keine verlässlichen Rückschlüsse
-auf zukünftige Ergebnisse zu.
+I simulate every order, balance, profit, and loss. My backtests and paper trades
+do not fully reproduce liquidity, execution, market gaps, fees, slippage, taxes,
+or service outages. I do not treat past or simulated results as reliable
+indicators of future performance.
 
-Die Software wird ohne Gewährleistung bereitgestellt. Nutzung, Konfiguration
-und Auswertung erfolgen auf eigenes Risiko. Die Paper-only-Sperren dürfen nicht
-als Grundlage dafür verstanden werden, die Anwendung ungeschützt aus dem
-Internet erreichbar zu machen.
+I provide the software without warranty. I expect each user to configure,
+operate, and evaluate it at their own risk. My paper-only safeguards do not make
+the unauthenticated dashboard safe to expose directly to the internet.
 
-Das Projekt ist nicht mit Bitpanda verbunden und wird von Bitpanda weder
-unterstützt noch bestätigt. Namen und Marken gehören ihren jeweiligen
-Inhabern.
+I am not affiliated with, endorsed by, or supported by Bitpanda. All product
+names and trademarks belong to their respective owners.

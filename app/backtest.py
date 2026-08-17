@@ -47,7 +47,7 @@ class Backtester:
         failures: dict[str, str] = {}
         for pair in self.settings.pairs:
             if pair not in constraints:
-                failures[pair] = "nicht aktiv"
+                failures[pair] = "not active"
                 continue
             try:
                 frame = self.market.history(
@@ -57,7 +57,7 @@ class Backtester:
             except Exception as exc:
                 failures[pair] = str(exc)
         if not frames:
-            raise MarketDataError("Keine Paare fuer den Multi-Coin-Backtest verfuegbar.")
+            raise MarketDataError("I found no pair available for the multi-coin backtest.")
 
         timestamps = sorted(set().union(*(set(frame.index) for frame in frames.values())))
         results = [

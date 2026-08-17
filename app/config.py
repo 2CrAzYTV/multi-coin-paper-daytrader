@@ -124,51 +124,55 @@ class Settings:
     def validate(self) -> None:
         if not self.paper_only:
             raise ValueError(
-                "PAPER_ONLY muss true bleiben. Diese Version kann keine Echtgeldorders ausfuehren."
+                "I require PAPER_ONLY=true. This version cannot place real-money orders."
             )
         if self.starting_capital <= 0:
-            raise ValueError("STARTING_CAPITAL muss groesser als 0 sein.")
+            raise ValueError("I require STARTING_CAPITAL to be greater than 0.")
         if not 0 < self.risk_per_trade <= 0.01:
-            raise ValueError("RISK_PER_TRADE muss zwischen 0 und 0.01 liegen.")
+            raise ValueError("I require RISK_PER_TRADE to be greater than 0 and no more than 0.01.")
         if not self.risk_per_trade <= self.max_aggregate_risk <= 0.02:
-            raise ValueError("MAX_AGGREGATE_RISK muss zwischen Trade-Risiko und 0.02 liegen.")
+            raise ValueError(
+                "I require MAX_AGGREGATE_RISK to be between the per-trade "
+                "risk and 0.02."
+            )
         if not self.max_aggregate_risk <= self.max_daily_loss <= 0.02:
-            raise ValueError("MAX_DAILY_LOSS muss zwischen Gesamtrisiko und 0.02 liegen.")
+            raise ValueError("I require MAX_DAILY_LOSS to be between aggregate risk and 0.02.")
         if not 0.02 <= self.hard_drawdown <= 0.25:
-            raise ValueError("HARD_DRAWDOWN muss zwischen 0.02 und 0.25 liegen.")
+            raise ValueError("I require HARD_DRAWDOWN to be between 0.02 and 0.25.")
         if not 1 <= self.max_open_positions <= 3:
-            raise ValueError("MAX_OPEN_POSITIONS muss zwischen 1 und 3 liegen.")
+            raise ValueError("I require MAX_OPEN_POSITIONS to be between 1 and 3.")
         if not 1 <= self.max_trades_per_day <= 6:
-            raise ValueError("MAX_TRADES_PER_DAY muss zwischen 1 und 6 liegen.")
+            raise ValueError("I require MAX_TRADES_PER_DAY to be between 1 and 6.")
         if not 2 <= self.fast_window < self.slow_window:
-            raise ValueError("FAST_WINDOW muss kleiner als SLOW_WINDOW sein.")
+            raise ValueError("I require FAST_WINDOW to be smaller than SLOW_WINDOW.")
         if not 2 <= self.trend_fast_window < self.trend_slow_window:
-            raise ValueError("TREND_FAST_WINDOW muss kleiner als TREND_SLOW_WINDOW sein.")
+            raise ValueError("I require TREND_FAST_WINDOW to be smaller than TREND_SLOW_WINDOW.")
         if (
             self.candle_interval not in ALLOWED_INTERVALS
             or self.trend_interval not in ALLOWED_INTERVALS
         ):
-            raise ValueError("Nicht unterstuetztes Kerzenintervall.")
+            raise ValueError("I received an unsupported candle interval.")
         if self.data_source not in {"fusion", "demo"}:
-            raise ValueError("DATA_SOURCE muss fusion oder demo sein.")
+            raise ValueError("I require DATA_SOURCE to be either fusion or demo.")
         if self.data_source == "fusion" and not self.fusion_read_api_key:
             raise ValueError(
-                "FUSION_READ_API_KEY fehlt. Nur einen Bitpanda-Fusion-Schluessel mit Read-Recht verwenden."
+                "I require FUSION_READ_API_KEY for Fusion data and accept a "
+                "Bitpanda key with Read permission only."
             )
         if not 60 <= self.history_bars <= 1_000 or not 100 <= self.backtest_bars <= 5_000:
-            raise ValueError("HISTORY_BARS oder BACKTEST_BARS ausserhalb der Sicherheitsgrenzen.")
+            raise ValueError("I received HISTORY_BARS or BACKTEST_BARS outside the safety limits.")
         if not 30 <= self.poll_seconds <= 900:
-            raise ValueError("POLL_SECONDS muss zwischen 30 und 900 liegen.")
+            raise ValueError("I require POLL_SECONDS to be between 30 and 900.")
         if (
             not 0 <= self.session_close_hour <= 23
             or not 0 <= self.session_close_minute <= 59
         ):
-            raise ValueError("Ungueltiger taeglicher Sitzungsabschluss.")
+            raise ValueError("I received an invalid daily session close time.")
         if (
             not 1 <= len(self.pairs) <= 10
             or any(not PAIR_PATTERN.match(pair) for pair in self.pairs)
         ):
-            raise ValueError("PAIRS muss 1 bis 10 eindeutige EUR-Paare enthalten.")
+            raise ValueError("I require PAIRS to contain 1 to 10 unique EUR pairs.")
 
     @property
     def database_path(self) -> Path:

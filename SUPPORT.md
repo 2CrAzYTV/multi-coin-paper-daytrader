@@ -1,15 +1,15 @@
 # Support
 
-Vor einer Anfrage bitte die [Unraid-Anleitung](docs/UNRAID.md), vorhandene
-Issues und die Container-Logs prüfen.
+Before I investigate a report, I ask the reporter to read
+[my Unraid guide](docs/UNRAID.md), search existing issues, and inspect the
+container logs.
 
-Für reproduzierbare Fehler und konkrete Verbesserungsvorschläge stehen die
-[GitHub-Issues](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/issues)
-zur Verfügung. Allgemeine Finanz-, Anlage- oder Steuerberatung gehört nicht zum
-Supportumfang.
+I use [GitHub Issues](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/issues)
+for reproducible bugs and concrete improvements. I do not provide investment,
+financial, legal, or tax advice.
 
-In einem Fehlerbericht dürfen keine `.env`, API-Schlüssel, Registry-Tokens oder
-vollständigen Datenbanken enthalten sein. Geeignete Diagnoseinformationen sind:
+I ask reporters never to attach a `.env`, API key, registry token, or complete
+database. I normally need only sanitised output from:
 
 ```bash
 docker inspect paper-trading-bot \
@@ -17,6 +17,5 @@ docker inspect paper-trading-bot \
 docker logs --tail=100 paper-trading-bot
 ```
 
-Vor dem Veröffentlichen die Ausgabe auf Geheimnisse und persönliche Daten
-prüfen. Sicherheitsprobleme bitte ausschließlich nach [SECURITY.md](SECURITY.md)
-melden.
+I ask the reporter to remove secrets and personal data before posting the
+output. I handle security reports only through [SECURITY.md](SECURITY.md).

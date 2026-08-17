@@ -1,37 +1,37 @@
-name: Verbesserung vorschlagen
-description: Eine Funktion oder Dokumentationsverbesserung für den Paper-Simulator vorschlagen
+name: Suggest an improvement
+description: I use this form for paper-simulation features and documentation improvements
 title: "[Feature]: "
 labels:
   - enhancement
 body:
   - type: markdown
     attributes:
-      value: Echte Orders, Konto-, Trade- und Transferfunktionen liegen außerhalb des Projektumfangs.
+      value: I keep real orders, account access, trading, and transfers outside this project's scope.
   - type: textarea
     id: problem
     attributes:
-      label: Ausgangsproblem
-      description: Welches konkrete Problem soll gelöst werden?
+      label: Problem
+      description: Tell me which concrete problem the proposal should solve.
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Vorgeschlagene Lösung
-      description: Beschreibe Verhalten, Bedienung und erwarteten Nutzen.
+      label: Proposed solution
+      description: Describe the expected behaviour, user experience, and benefit.
     validations:
       required: true
   - type: textarea
     id: safety
     attributes:
-      label: Sicherheits- und Risikofolgen
-      description: Welche Paper-only-, Datenschutz- oder Risikogrenzen sind betroffen?
+      label: Safety and risk impact
+      description: Explain any effect on paper-only guarantees, privacy, or risk limits.
     validations:
       required: true
   - type: checkboxes
     id: scope
     attributes:
-      label: Umfang
+      label: Scope confirmation
       options:
-        - label: Der Vorschlag benötigt keine echte Order-, Trade-, Konto- oder Transferfunktion.
+        - label: I confirm that this proposal requires no real order, account, trade, or transfer function.
           required: true

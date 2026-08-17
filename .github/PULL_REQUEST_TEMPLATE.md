@@ -1,22 +1,22 @@
-## Zweck
+## What I changed
 
-<!-- Problem und Lösung kurz beschreiben. -->
+<!-- I describe the problem and my solution here. -->
 
-## Änderungen
+## Why I changed it
 
-<!-- Wichtigste Verhaltens- oder Dokumentationsänderungen aufführen. -->
+<!-- I explain the user or developer impact here. -->
 
-## Prüfung
+## How I verified it
 
-- [ ] `python -m unittest discover -s tests -v`
-- [ ] `python -m compileall -q app tests`
-- [ ] `node --check app/static/app.js`
-- [ ] Verhaltensänderungen sind getestet und im Changelog dokumentiert.
-- [ ] Dokumentation wurde angepasst, falls Installation oder Bedienung betroffen ist.
-- [ ] Es wurden keine `.env`, Schlüssel, Tokens, Datenbanken oder persönlichen Daten hinzugefügt.
-- [ ] `PAPER_ONLY=false` verhindert weiterhin den Start.
-- [ ] Es wurden keine echten Order-, Konto-, Trade- oder Transferfunktionen ergänzt.
+- [ ] I ran `python -m unittest discover -s tests -v`.
+- [ ] I ran `python -m compileall -q app tests`.
+- [ ] I ran `node --check app/static/app.js`.
+- [ ] I added tests and changelog notes for user-visible behaviour.
+- [ ] I updated the installation or user documentation when required.
+- [ ] I added no `.env`, API key, token, database, or personal data.
+- [ ] I verified that `PAPER_ONLY=false` still prevents startup.
+- [ ] I added no real order, account, trade, or transfer function.
 
-## Unraid-/Container-Auswirkung
+## Unraid and container impact
 
-<!-- Migration, Image-Neuerstellung, Backup- oder Rollback-Hinweise; andernfalls „keine“. -->
+<!-- I document migration, image recreation, backup, and rollback requirements, or write “None”. -->

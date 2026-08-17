@@ -69,7 +69,7 @@ class MarketData:
             return {pair: PairConstraint(pair=pair) for pair in self.settings.pairs}
         payload = self._get_json("/v1/pairs")
         if not isinstance(payload, list):
-            raise MarketDataError("Bitpanda Fusion hat keine gueltige Paarliste geliefert.")
+            raise MarketDataError("I did not receive a valid pair list from Bitpanda Fusion.")
         requested = set(self.settings.pairs)
         constraints: dict[str, PairConstraint] = {}
         for item in payload:
@@ -84,10 +84,12 @@ class MarketData:
                     size_increment=float(item.get("sizeIncrement") or 0.00000001),
                 )
             except (TypeError, ValueError) as exc:
-                raise MarketDataError(f"Ungueltige Handelsgrenzen fuer {pair}.") from exc
+                raise MarketDataError(
+                    f"I received invalid trading constraints for {pair}."
+                ) from exc
         if not constraints:
             raise MarketDataError(
-                "Keines der konfigurierten EUR-Paare ist bei Bitpanda Fusion aktiv."
+                "I found none of the configured EUR pairs active on Bitpanda Fusion."
             )
         return constraints
 
@@ -96,7 +98,7 @@ class MarketData:
             f"/v1/candles/{pair}", params={"interval": interval, "limit": limit}
         )
         if not isinstance(payload, list) or not payload:
-            raise MarketDataError(f"Keine Fusion-Kerzen fuer {pair} erhalten.")
+            raise MarketDataError(f"I received no Fusion candles for {pair}.")
         try:
             data = pd.DataFrame(payload).rename(
                 columns={
@@ -109,7 +111,7 @@ class MarketData:
             )
             data.index = pd.to_datetime(data.pop("timestamp"), unit="s", utc=True)
         except Exception as exc:
-            raise MarketDataError(f"Fusion-Kerzen fuer {pair} konnten nicht gelesen werden.") from exc
+            raise MarketDataError(f"I could not parse Fusion candles for {pair}.") from exc
         data = self._normalize(data, pair)
         seconds = INTERVAL_SECONDS[interval]
         now = datetime.now(UTC).timestamp()
@@ -120,7 +122,7 @@ class MarketData:
     def _get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         if not self.settings.fusion_read_api_key:
             raise MarketDataError(
-                "Fusion-Read-API-Key fehlt. In .env nur einen Schluessel mit Read-Recht eintragen."
+                "I require a Fusion API key in .env with Read permission only."
             )
         try:
             import httpx
@@ -139,14 +141,16 @@ class MarketData:
         except Exception as exc:  # pragma: no cover - depends on remote service
             status = getattr(getattr(exc, "response", None), "status_code", None)
             detail = f"HTTP {status}" if status else type(exc).__name__
-            raise MarketDataError(f"Bitpanda-Fusion-Abruf fehlgeschlagen ({detail}).") from exc
+            raise MarketDataError(f"I could not retrieve Bitpanda Fusion data ({detail}).") from exc
 
     @staticmethod
     def _normalize(data: pd.DataFrame, pair: str) -> pd.DataFrame:
         required = ["Open", "High", "Low", "Close", "Volume"]
         missing = [column for column in required if column not in data.columns]
         if missing:
-            raise MarketDataError(f"Marktdaten fuer {pair} ohne Spalten: {missing}")
+            raise MarketDataError(
+                f"I received market data for {pair} without these columns: {missing}"
+            )
         clean = data[required].copy()
         for column in required:
             clean[column] = pd.to_numeric(clean[column], errors="coerce")
@@ -154,7 +158,10 @@ class MarketData:
         clean.index = pd.to_datetime(clean.index, utc=True)
         clean = clean[~clean.index.duplicated(keep="last")].sort_index()
         if len(clean) < 60:
-            raise MarketDataError(f"Zu wenig Kerzen fuer {pair}: {len(clean)} statt mindestens 60.")
+            raise MarketDataError(
+                f"I received too few candles for {pair}: {len(clean)} instead "
+                "of at least 60."
+            )
         return clean.astype(float)
 
     @staticmethod
