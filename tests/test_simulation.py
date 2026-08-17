@@ -7,6 +7,7 @@ from app.config import Settings
 from app.db import Repository
 from app.engine import PaperEngine
 from app.market_data import MarketData
+from app.models import BITPANDA_PAPER_LEVERAGES, STRATEGIES
 
 
 class SimulationTests(unittest.TestCase):
@@ -36,6 +37,15 @@ class SimulationTests(unittest.TestCase):
         self.assertTrue(all(pair.endswith("-EUR") for pair in self.settings.pairs))
         self.assertNotIn("XAU-EUR", self.settings.pairs)
 
+    def test_bitpanda_paper_leverage_presets_are_available(self):
+        self.assertEqual(BITPANDA_PAPER_LEVERAGES, (1.0, 2.0, 3.0, 5.0, 10.0))
+        long_short = [strategy for strategy in STRATEGIES if strategy.short_allowed]
+        self.assertEqual(
+            tuple(strategy.max_leverage for strategy in long_short),
+            BITPANDA_PAPER_LEVERAGES,
+        )
+        self.assertEqual(len(STRATEGIES), 6)
+
     def test_demo_source_returns_distinct_ohlcv_for_each_pair(self):
         closes = []
         for pair in self.settings.pairs:
@@ -49,7 +59,7 @@ class SimulationTests(unittest.TestCase):
         result = Backtester(self.settings, self.market).run(400)
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["pairs"], sorted(self.settings.pairs))
-        self.assertEqual(len(result["strategies"]), 3)
+        self.assertEqual(len(result["strategies"]), 6)
         for strategy in result["strategies"]:
             self.assertGreater(strategy["final_equity"], 0)
             self.assertLessEqual(strategy["max_positions"], 2)
@@ -65,7 +75,7 @@ class SimulationTests(unittest.TestCase):
         self.assertEqual(first["status"], "ok")
         self.assertEqual(second["status"], "no_new_candles")
         self.assertEqual(len(repository.list_markets()), 5)
-        self.assertEqual(len(engine.serialize_portfolios()), 3)
+        self.assertEqual(len(engine.serialize_portfolios()), 6)
 
     def test_every_open_position_has_stop_target_and_global_count_cap(self):
         repository = Repository(self.settings.database_path, 1_000)
