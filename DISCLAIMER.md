@@ -1,17 +1,13 @@
 # Disclaimer
 
-I provide this project as a technical learning and simulation environment. I do
-not provide investment, financial, tax, or legal advice, and I do not recommend
-buying or selling any asset.
+I provide this project as a technical learning, research, backtesting, and paper-trading simulation environment. It does **not** place real-money orders, hold customer assets, provide custody, execute transactions for users, or manage a real investment portfolio.
 
-I simulate every order, balance, profit, and loss. My backtests and paper trades
-do not fully reproduce liquidity, execution, market gaps, fees, slippage, taxes,
-or service outages. I do not treat past or simulated results as reliable
-indicators of future performance.
+I do not provide investment, financial, tax, or legal advice. The software does not provide personalized recommendations and does not recommend that any user buy, sell, hold, short, or otherwise transact in a specific crypto asset. Strategy outputs, scanner results, long/short indications, backtests, and portfolio results are **simulated paper signals only** and must not be treated as individualized investment recommendations.
 
-I provide the software without warranty. I expect each user to configure,
-operate, and evaluate it at their own risk. My paper-only safeguards do not make
-the unauthenticated dashboard safe to expose directly to the internet.
+I simulate every order, balance, profit, loss, stop, target, short position, and leverage value. Backtests and paper trades do not fully reproduce liquidity, execution, market gaps, fees, slippage, taxes, outages, counterparty risk, or future market conditions. Past or simulated results are not reliable indicators of future performance, and **no profit, return, income, or performance is guaranteed or promised**.
 
-I am not affiliated with, endorsed by, or supported by Bitpanda. All product
-names and trademarks belong to their respective owners.
+Bitpanda Fusion access in this project is intended only for read-only market data. Users should provide their own API key with **Read** permission only and leave **Trade** and **Transfer** permissions disabled. The project is not intended to redistribute, resell, or operate a centralized public feed of Bitpanda market data.
+
+I provide the software without warranty. Each user is responsible for complying with the laws, tax rules, platform terms, API terms, and other requirements that apply in their jurisdiction. The paper-only safeguards do not make the unauthenticated dashboard safe to expose directly to the internet.
+
+I am not affiliated with, endorsed by, sponsored by, or supported by Bitpanda. Bitpanda and all other product names and trademarks belong to their respective owners.
