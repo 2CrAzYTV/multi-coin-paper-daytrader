@@ -53,6 +53,11 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertEqual(icon[:8], b"\x89PNG\r\n\x1a\n")
         self.assertEqual(unpack(">II", icon[16:24]), (512, 512))
         self.assertEqual(icon[25], 6, "I require an RGBA PNG with transparency.")
+        dockerfile = (ROOT / "Dockerfile").read_text()
+        self.assertIn(
+            "COPY unraid/multi-coin-paper-daytrader.png ./app/static/app-icon.png",
+            dockerfile,
+        )
 
     def test_main_workflow_publishes_updateable_latest_image(self):
         workflow = (ROOT / ".github/workflows/container-image.yml").read_text()

@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY unraid/multi-coin-paper-daytrader.png ./app/static/app-icon.png
 RUN mkdir -p /data
 
 EXPOSE 8787

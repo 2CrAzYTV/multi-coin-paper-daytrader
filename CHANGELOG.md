@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- I added a high-resolution transparent PNG app icon and linked its direct raw
-  URL from the Unraid template for reliable light- and dark-theme rendering.
+- I added a high-resolution transparent PNG app icon, linked its direct raw URL
+  from the Unraid template, and serve the same asset from the container for
+  private-installation caching on Unraid.
 - I added an English/German dashboard language selector with localized numbers,
   times, scanner results, portfolio details, controls, and known event messages.
 - I persist the selected language per browser and expose `APP_LANGUAGE=en|de`
