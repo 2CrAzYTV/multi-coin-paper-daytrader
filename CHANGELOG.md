@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- I expanded the paper comparison set with Bitpanda-compatible simulated leverage presets at 1×, 2×, 3×, 5×, and 10× for Long/Short strategies while keeping the separate Long-only 1× baseline.
+- I keep the existing per-trade, aggregate-risk, daily-loss, and hard-drawdown limits independent from leverage so higher paper leverage increases only the maximum simulated exposure, not the configured risk budget.
 - I added a high-resolution transparent PNG app icon, linked its direct raw URL
   from the Unraid template, and serve the same asset from the container for
   private-installation caching on Unraid.

@@ -12,11 +12,46 @@ class StrategySpec:
     color: str
 
 
-STRATEGIES = (
-    StrategySpec("long_only_1x", "Long-only · 1×", False, 1.0, "#59d3a5"),
-    StrategySpec("long_short_1x", "Long/Short · 1×", True, 1.0, "#66a7ff"),
-    StrategySpec("long_short_2x", "Long/Short · max. 2×", True, 2.0, "#f4b860"),
-)
+def _leverage_id(value: float) -> str:
+    text = f"{value:g}".replace(".", "p")
+    return f"long_short_{text}x"
+
+
+def build_strategies(leverages: tuple[float, ...]) -> tuple[StrategySpec, ...]:
+    """Build paper-only comparison strategies for approved leverage presets."""
+    palette = (
+        "#66a7ff",
+        "#f4b860",
+        "#d88cff",
+        "#70d6ff",
+        "#ff9770",
+        "#ffd670",
+        "#e9ff70",
+        "#9bde7e",
+        "#c77dff",
+        "#ff70a6",
+    )
+    specs: list[StrategySpec] = [
+        StrategySpec("long_only_1x", "Long-only · 1×", False, 1.0, "#59d3a5")
+    ]
+    for index, leverage in enumerate(leverages):
+        specs.append(
+            StrategySpec(
+                _leverage_id(leverage),
+                f"Long/Short · max. {leverage:g}×",
+                True,
+                leverage,
+                palette[index % len(palette)],
+            )
+        )
+    return tuple(specs)
+
+
+# Current paper presets mirror the leverage levels Bitpanda documents for its
+# margin product. They are simulation limits only: no margin account, loan,
+# derivative, or real order is created by this application.
+BITPANDA_PAPER_LEVERAGES = (1.0, 2.0, 3.0, 5.0, 10.0)
+STRATEGIES = build_strategies(BITPANDA_PAPER_LEVERAGES)
 
 
 @dataclass(frozen=True)
