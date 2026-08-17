@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Container version="2">
+  <Name>Multi-Coin Paper Daytrader :dev</Name>
+  <Repository>ghcr.io/2crazytv/multi-coin-paper-daytrader:dev</Repository>
+  <Registry>https://ghcr.io/2crazytv/multi-coin-paper-daytrader</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/2CrAzYTV/multi-coin-paper-daytrader/issues</Support>
+  <Project>https://github.com/2CrAzYTV/multi-coin-paper-daytrader/tree/develop</Project>
+  <Overview>DEVELOPMENT build of Multi-Coin Paper Daytrader for isolated testing on Unraid. Uses the :dev container image and separate appdata/port. Not intended for Community Applications distribution.</Overview>
+  <Category>Tools:Utilities Crypto Currency:</Category>
+  <Beta>true</Beta>
+  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.png</Icon>
+  <ReadMe>https://github.com/2CrAzYTV/multi-coin-paper-daytrader/blob/develop/README.md</ReadMe>
+  <ExtraParams>--user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <Requires>Development-only template. Keep it separate from the stable Community Applications installation. Create /mnt/user/appdata/paper-trading-bot-dev/data, assign it to nobody:users (99:100), and set mode 775. Keep PAPER_ONLY=true. For Fusion use your own Bitpanda key with Read permission only.</Requires>
+
+  <Config Name="WebUI Port" Target="8787" Default="8788" Mode="tcp" Description="Host port for the isolated DEV dashboard." Type="Port" Display="always" Required="true" Mask="false">8788</Config>
+  <Config Name="Persistent Data" Target="/data" Default="/mnt/user/appdata/paper-trading-bot-dev/data" Mode="rw" Description="Separate DEV SQLite database and cached market data." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/paper-trading-bot-dev/data</Config>
+
+  <Config Name="UI Language" Target="APP_LANGUAGE" Default="de" Mode="" Description="Default dashboard language: de or en." Type="Variable" Display="always" Required="true" Mask="false">de</Config>
+  <Config Name="Market Data Source" Target="DATA_SOURCE" Default="demo" Mode="" Description="demo or read-only Bitpanda Fusion market data." Type="Variable" Display="always" Required="true" Mask="false">demo</Config>
+  <Config Name="Bitpanda Key" Target="FUSION_READ_API_KEY" Default="" Mode="" Description="Required only for DATA_SOURCE=fusion. Use Read permission only." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="Starting Paper Capital" Target="STARTING_CAPITAL" Default="1000" Mode="" Description="Starting balance for the paper account in EUR." Type="Variable" Display="always" Required="true" Mask="false">1000</Config>
+  <Config Name="Risk per Trade" Target="RISK_PER_TRADE" Default="0.005" Mode="" Description="0.005 = 0.5%." Type="Variable" Display="always" Required="true" Mask="false">0.005</Config>
+  <Config Name="Maximum Aggregate Risk" Target="MAX_AGGREGATE_RISK" Default="0.01" Mode="" Description="0.01 = 1%." Type="Variable" Display="always" Required="true" Mask="false">0.01</Config>
+  <Config Name="Maximum Daily Loss" Target="MAX_DAILY_LOSS" Default="0.02" Mode="" Description="0.02 = 2%." Type="Variable" Display="always" Required="true" Mask="false">0.02</Config>
+  <Config Name="Maximum Open Positions" Target="MAX_OPEN_POSITIONS" Default="2" Mode="" Description="Maximum simultaneous paper positions." Type="Variable" Display="always" Required="true" Mask="false">2</Config>
+  <Config Name="Maximum Trades per Day" Target="MAX_TRADES_PER_DAY" Default="3" Mode="" Description="Maximum new paper trades per day." Type="Variable" Display="always" Required="true" Mask="false">3</Config>
+  <Config Name="Trading Pairs" Target="PAIRS" Default="BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR" Mode="" Description="Comma-separated EUR pairs." Type="Variable" Display="always" Required="true" Mask="false">BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR</Config>
+  <Config Name="Candle Interval" Target="CANDLE_INTERVAL" Default="15m" Mode="" Description="Primary strategy candle interval." Type="Variable" Display="always" Required="true" Mask="false">15m</Config>
+  <Config Name="Trend Interval" Target="TREND_INTERVAL" Default="1h" Mode="" Description="Higher-timeframe trend interval." Type="Variable" Display="always" Required="true" Mask="false">1h</Config>
+
+  <Config Name="Paper Only Safety Lock" Target="PAPER_ONLY" Default="true" Mode="" Description="Must remain true." Type="Variable" Display="advanced" Required="true" Mask="false">true</Config>
+  <Config Name="Hard Drawdown Limit" Target="HARD_DRAWDOWN" Default="0.10" Mode="" Description="0.10 = 10%." Type="Variable" Display="advanced" Required="true" Mask="false">0.10</Config>
+  <Config Name="Fee Rate" Target="FEE_RATE" Default="0.001" Mode="" Description="Simulated trading fee." Type="Variable" Display="advanced" Required="true" Mask="false">0.001</Config>
+  <Config Name="Slippage Rate" Target="SLIPPAGE_RATE" Default="0.0005" Mode="" Description="Simulated slippage." Type="Variable" Display="advanced" Required="true" Mask="false">0.0005</Config>
+  <Config Name="Fast EMA Window" Target="FAST_WINDOW" Default="9" Mode="" Description="Fast strategy window." Type="Variable" Display="advanced" Required="true" Mask="false">9</Config>
+  <Config Name="Slow EMA Window" Target="SLOW_WINDOW" Default="21" Mode="" Description="Slow strategy window." Type="Variable" Display="advanced" Required="true" Mask="false">21</Config>
+  <Config Name="Trend Fast Window" Target="TREND_FAST_WINDOW" Default="20" Mode="" Description="Fast trend window." Type="Variable" Display="advanced" Required="true" Mask="false">20</Config>
+  <Config Name="Trend Slow Window" Target="TREND_SLOW_WINDOW" Default="50" Mode="" Description="Slow trend window." Type="Variable" Display="advanced" Required="true" Mask="false">50</Config>
+  <Config Name="ATR Window" Target="ATR_WINDOW" Default="14" Mode="" Description="ATR calculation period." Type="Variable" Display="advanced" Required="true" Mask="false">14</Config>
+  <Config Name="RSI Window" Target="RSI_WINDOW" Default="14" Mode="" Description="RSI calculation period." Type="Variable" Display="advanced" Required="true" Mask="false">14</Config>
+  <Config Name="Stop ATR Multiple" Target="STOP_ATR_MULTIPLE" Default="1.5" Mode="" Description="ATR multiplier for stops." Type="Variable" Display="advanced" Required="true" Mask="false">1.5</Config>
+  <Config Name="Minimum Stop Percent" Target="MINIMUM_STOP_PCT" Default="0.006" Mode="" Description="0.006 = 0.6%." Type="Variable" Display="advanced" Required="true" Mask="false">0.006</Config>
+  <Config Name="Take Profit R" Target="TAKE_PROFIT_R" Default="2.0" Mode="" Description="Take-profit target in R multiples." Type="Variable" Display="advanced" Required="true" Mask="false">2.0</Config>
+  <Config Name="Trailing Trigger R" Target="TRAILING_TRIGGER_R" Default="1.0" Mode="" Description="R multiple that activates trailing logic." Type="Variable" Display="advanced" Required="true" Mask="false">1.0</Config>
+  <Config Name="History Bars" Target="HISTORY_BARS" Default="500" Mode="" Description="Bars loaded for strategy calculations." Type="Variable" Display="advanced" Required="true" Mask="false">500</Config>
+  <Config Name="Backtest Bars" Target="BACKTEST_BARS" Default="1000" Mode="" Description="Bars used by the backtest." Type="Variable" Display="advanced" Required="true" Mask="false">1000</Config>
+  <Config Name="Poll Interval Seconds" Target="POLL_SECONDS" Default="60" Mode="" Description="Scanner interval." Type="Variable" Display="advanced" Required="true" Mask="false">60</Config>
+  <Config Name="Session Close Hour" Target="SESSION_CLOSE_HOUR" Default="23" Mode="" Description="Daily close hour." Type="Variable" Display="advanced" Required="true" Mask="false">23</Config>
+  <Config Name="Session Close Minute" Target="SESSION_CLOSE_MINUTE" Default="45" Mode="" Description="Daily close minute." Type="Variable" Display="advanced" Required="true" Mask="false">45</Config>
+  <Config Name="Cooldown Minutes" Target="COOLDOWN_MINUTES" Default="45" Mode="" Description="Cooldown after a completed trade." Type="Variable" Display="advanced" Required="true" Mask="false">45</Config>
+  <Config Name="Application Timezone" Target="APP_TIMEZONE" Default="Europe/Berlin" Mode="" Description="Trading session timezone." Type="Variable" Display="advanced" Required="true" Mask="false">Europe/Berlin</Config>
+  <Config Name="Container Timezone" Target="TZ" Default="Europe/Berlin" Mode="" Description="Container timezone." Type="Variable" Display="advanced" Required="true" Mask="false">Europe/Berlin</Config>
+  <Config Name="Data Directory" Target="DATA_DIR" Default="/data" Mode="" Description="Container persistent-data path." Type="Variable" Display="advanced" Required="true" Mask="false">/data</Config>
+  <Config Name="Fusion Base URL" Target="FUSION_BASE_URL" Default="https://api.fusion.bitpanda.com" Mode="" Description="Bitpanda Fusion API base URL." Type="Variable" Display="advanced" Required="true" Mask="false">https://api.fusion.bitpanda.com</Config>
+</Container>
