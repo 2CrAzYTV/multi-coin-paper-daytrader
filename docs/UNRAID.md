@@ -10,10 +10,10 @@ Container image:
 ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-Unraid XML template:
+Canonical Unraid / Community Applications XML template:
 
 ```text
-https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.xml
+https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/templates/multi-coin-paper-daytrader.xml
 ```
 
 Repository:
@@ -51,7 +51,7 @@ No token or registry login should be required.
 
 ### Load the Unraid template
 
-Use the public XML template from this repository. The included `unraid/multi-coin-paper-daytrader.xml` contains the image reference, WebUI, icon, data mapping, hardened runtime options and all application variables.
+Use the public XML template from this repository. The canonical `templates/multi-coin-paper-daytrader.xml` contains the image reference, WebUI, icon, data mapping, hardened runtime options and all application variables. The repository intentionally contains only this one installable Docker XML so Community Applications discovers one app entry.
 
 For a first installation, keep these important values:
 
@@ -186,7 +186,7 @@ On Unraid:
 
 The `/data` bind mount survives recreation.
 
-Unraid keeps a locally saved template for an installed container. An image update does not necessarily update that saved template. If a release adds or removes template fields, recreate the container from the current public XML while keeping the same persistent `/data` mapping.
+Unraid keeps a locally saved template for an installed container. An image update does not necessarily update that saved template. If a release adds or removes template fields, recreate the container from the current canonical public XML under `templates/` while keeping the same persistent `/data` mapping.
 
 `docker restart` and `--restart=unless-stopped` do not pull new images.
 
@@ -244,4 +244,6 @@ If switching an existing simulation from demo to Fusion, the database can still 
 
 ## Community Applications status
 
-The repository already contains a public Unraid XML template and public GHCR image, which are the core technical assets required for distribution. **Being installable from a public template is not the same as being listed in Unraid Community Applications.** A Community Applications listing requires the separate CA publication/submission process and should only be done after the clean-install test and public beta release are confirmed.
+The repository contains the canonical public Docker template under `templates/`, `ca_profile.xml`, a public GHCR image, project icon, support links, and release metadata needed for Community Applications submission. The separate `unraid/` directory is now reserved for icon assets rather than a second installable Docker XML, preventing duplicate CA discovery.
+
+Community Applications still performs its own **Validate**, **Scan**, and moderation/review process before the app becomes listed.

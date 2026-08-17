@@ -6,18 +6,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = "ghcr.io/2crazytv/multi-coin-paper-daytrader:latest"
+CA_TEMPLATE = ROOT / "templates/multi-coin-paper-daytrader.xml"
 
 
 class ReleaseAssetTests(unittest.TestCase):
     def test_unraid_template_tracks_latest_with_hardened_runtime(self):
-        root = ET.parse(ROOT / "unraid/multi-coin-paper-daytrader.xml").getroot()
+        root = ET.parse(CA_TEMPLATE).getroot()
         self.assertEqual(root.tag, "Container")
-        self.assertEqual(root.findtext("Name"), "paper-trading-bot")
+        self.assertEqual(root.findtext("Name"), "Multi-Coin Paper Daytrader")
         self.assertEqual(root.findtext("Repository"), IMAGE)
         self.assertEqual(
             root.findtext("Icon"),
             "https://raw.githubusercontent.com/2CrAzYTV/"
             "multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.png",
+        )
+        self.assertEqual(
+            root.findtext("TemplateURL"),
+            "https://raw.githubusercontent.com/2CrAzYTV/"
+            "multi-coin-paper-daytrader/main/templates/multi-coin-paper-daytrader.xml",
         )
         extra = root.findtext("ExtraParams") or ""
         for required in (
@@ -93,10 +99,11 @@ class ReleaseAssetTests(unittest.TestCase):
 
         overview = root.findtext("Overview") or ""
         requires = root.findtext("Requires") or ""
-        self.assertIn("Unraid does not require a .env file", overview)
+        self.assertIn("paper-only", overview)
+        self.assertIn("cannot place real-money orders", overview)
         self.assertIn("PAPER_ONLY=true", requires)
-        self.assertIn("0.5% risk per trade", requires)
-        self.assertIn("2% maximum daily loss", requires)
+        self.assertIn("Read permission only", requires)
+        self.assertIn("Trade and Transfer disabled", requires)
 
     def test_compose_has_safe_defaults_without_env_file_dependency(self):
         compose = (ROOT / "docker-compose.yml").read_text()
@@ -132,6 +139,8 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("type=raw,value=latest,enable={{is_default_branch}}", workflow)
         self.assertIn("type=sha,prefix=sha-", workflow)
         self.assertIn("push: true", workflow)
+        self.assertIn("templates/multi-coin-paper-daytrader.xml", workflow)
+        self.assertNotIn("ET.parse('unraid/multi-coin-paper-daytrader.xml')", workflow)
 
     def test_public_unraid_guide_documents_update_and_persistence(self):
         guide = (ROOT / "docs/UNRAID.md").read_text()
@@ -156,7 +165,7 @@ class ReleaseAssetTests(unittest.TestCase):
             "DISCLAIMER.md",
             "CODE_OF_CONDUCT.md",
             "docs/UNRAID.md",
-            "unraid/multi-coin-paper-daytrader.xml",
+            "templates/multi-coin-paper-daytrader.xml",
             "app/static/index.html",
         )
         german_markers = ("Veröffentlichungsstatus", "Jetzt prüfen", "Noch keine")

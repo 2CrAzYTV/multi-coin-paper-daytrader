@@ -12,10 +12,10 @@ The public container image is:
 ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-The public Unraid template is:
+The canonical public Unraid / Community Applications template is:
 
 ```text
-https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.xml
+https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/templates/multi-coin-paper-daytrader.xml
 ```
 
 No Git checkout, Docker Compose, `.env`, GitHub login, or GHCR token is required on Unraid.
@@ -23,7 +23,7 @@ No Git checkout, Docker Compose, `.env`, GitHub login, or GHCR token is required
 ### Quick install for a new Unraid user
 
 1. Open **Docker → Add Container** in Unraid.
-2. Use the public XML template from this repository. If the template is not already available in the local template selector, download/import `unraid/multi-coin-paper-daytrader.xml` first.
+2. Use the public XML template from this repository. If the template is not already available in the local template selector, download/import `templates/multi-coin-paper-daytrader.xml` first.
 3. Keep **Repository** set to `ghcr.io/2crazytv/multi-coin-paper-daytrader:latest`.
 4. Keep **Persistent Data** at `/mnt/user/appdata/paper-trading-bot/data` unless you deliberately want another location.
 5. Keep `PAPER_ONLY=true`.
@@ -126,7 +126,7 @@ Never commit, publish, or paste a real API key into an issue or support request.
 
 Every successful push to `main` is tested by GitHub Actions and publishes a new `:latest` image plus an immutable `sha-*` tag. On Unraid use **Docker → Check for Updates → Update/Force Update**. The `/data` bind mount survives container recreation.
 
-An image update does not automatically replace the locally saved Unraid template. If a release adds or removes template fields, recreate the container from the current public XML while keeping the same persistent `/data` mapping. Backup and digest rollback are documented in [docs/UNRAID.md](docs/UNRAID.md#updates-backup-and-rollback).
+An image update does not automatically replace the locally saved Unraid template. If a release adds or removes template fields, recreate the container from the current canonical public XML under `templates/` while keeping the same persistent `/data` mapping. Backup and digest rollback are documented in [docs/UNRAID.md](docs/UNRAID.md#updates-backup-and-rollback).
 
 ## Dashboard controls
 
@@ -159,7 +159,7 @@ The core local/CI checks are:
 python -m unittest discover -s tests -v
 python -m compileall -q app tests
 node --check app/static/app.js
-python -c "import xml.etree.ElementTree as ET; ET.parse('unraid/multi-coin-paper-daytrader.xml')"
+python -c "import xml.etree.ElementTree as ET; ET.parse('templates/multi-coin-paper-daytrader.xml')"
 docker compose config
 ```
 
@@ -180,6 +180,7 @@ Pull requests also build the complete Docker image before merge. The protected `
 This project is published under the [MIT License](LICENSE). Also see:
 
 - [Disclaimer](DISCLAIMER.md)
+- [Legal safety boundaries](LEGAL_SAFETY.md)
 - [Security policy](SECURITY.md)
 - [Support policy](SUPPORT.md)
 - [Contributing guide](CONTRIBUTING.md)
