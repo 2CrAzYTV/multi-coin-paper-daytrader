@@ -2,10 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from app.backtest import Backtester
 from app.config import Settings
 from app.db import Repository
 from app.engine import PaperEngine
+from app.main import BacktestRequest
 from app.market_data import MarketData
 from app.models import BITPANDA_PAPER_LEVERAGES, STRATEGIES
 
@@ -16,6 +19,9 @@ class SimulationTests(unittest.TestCase):
     def test_default_universe_contains_ten_eur_crypto_pairs(self):
         self.assertEqual(self.settings.pairs,("BTC-EUR","ETH-EUR","SOL-EUR","XRP-EUR","ADA-EUR","LINK-EUR","AVAX-EUR","SUI-EUR","TAO-EUR","DOGE-EUR")); self.assertTrue(all(p.endswith("-EUR") for p in self.settings.pairs))
     def test_default_backtest_horizon_is_5000(self): self.assertEqual(Settings().backtest_bars,5000)
+    def test_backtest_api_accepts_5000_bars(self):
+        self.assertEqual(BacktestRequest(bars=5000).bars,5000)
+        with self.assertRaises(ValidationError): BacktestRequest(bars=5001)
     def test_demo_history_supports_5000_bars(self): self.assertEqual(len(self.market.history("BTC-EUR","15m",5000)),5000)
     def test_available_eur_pairs_matches_demo_universe(self): self.assertEqual(self.market.available_eur_pairs(),self.settings.pairs)
     def test_bitpanda_paper_leverage_presets_are_available(self):
