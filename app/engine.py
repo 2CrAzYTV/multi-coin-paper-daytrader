@@ -12,7 +12,14 @@ from .config import Settings
 from .db import Repository
 from .market_data import MarketData, MarketDataError
 from .models import STRATEGIES, PairConstraint, SignalSnapshot, StrategySpec
-from .risk import calculate_position_size, daily_limit_breached, drawdown
+from .risk import (
+    calculate_position_size,
+    daily_limit_breached,
+    drawdown,
+    estimate_liquidation_price,
+    margin_required,
+    margin_utilization,
+)
 from .strategies import (
     add_entry_indicators,
     add_trend_indicators,
@@ -64,6 +71,7 @@ class PaperEngine:
                 for item in positions
             )
             open_risk = sum(float(item["initial_risk"]) for item in positions)
+            required_margin = margin_required(notional, spec.max_leverage)
             result.append(
                 {
                     **portfolio,
@@ -78,25 +86,40 @@ class PaperEngine:
                     "open_risk": round(open_risk, 2),
                     "effective_leverage": round(notional / equity, 3) if equity > 0 else 0,
                     "max_leverage": spec.max_leverage,
+                    "margin_required": round(required_margin, 2),
+                    "margin_utilization_pct": round(
+                        margin_utilization(notional, equity, spec.max_leverage) * 100, 2
+                    ),
                     "color": spec.color,
                 }
             )
         return result
 
     def serialize_positions(self) -> list[dict[str, Any]]:
+        specs = {item.strategy_id: item for item in STRATEGIES}
         result: list[dict[str, Any]] = []
         for position in self.repository.list_positions():
             direction = self._direction(position)
             pnl = direction * float(position["units"]) * (
                 float(position["last_price"]) - float(position["entry_price"])
             )
+            spec = specs[position["strategy_id"]]
+            notional = float(position["units"]) * float(position["last_price"])
+            liquidation_price = estimate_liquidation_price(
+                float(position["entry_price"]), direction, spec.max_leverage
+            )
             result.append(
                 {
                     **position,
                     "unrealized_pnl": round(pnl, 2),
-                    "notional": round(
-                        float(position["units"]) * float(position["last_price"]), 2
+                    "notional": round(notional, 2),
+                    "max_leverage": spec.max_leverage,
+                    "margin_required": round(
+                        margin_required(notional, spec.max_leverage), 2
                     ),
+                    "liquidation_price": round(liquidation_price, 8)
+                    if liquidation_price is not None
+                    else None,
                 }
             )
         return result
@@ -258,9 +281,21 @@ class PaperEngine:
                 continue
             bar = packages[pair]["entry"].iloc[-1]
             direction = self._direction(position)
+            liquidation_price = estimate_liquidation_price(
+                float(position["entry_price"]), direction, spec.max_leverage
+            )
             exit_price: float | None = None
             reason = ""
-            if direction > 0 and float(bar["Low"]) <= float(position["stop_price"]):
+            # With candle data we can identify an opening gap beyond the modeled
+            # liquidation threshold unambiguously. Intrabar, the protective stop
+            # is assumed to execute first when it lies between entry and liquidation.
+            if liquidation_price is not None and direction > 0 and float(bar["Open"]) <= liquidation_price:
+                exit_price = float(bar["Open"])
+                reason = "Simulated liquidation"
+            elif liquidation_price is not None and direction < 0 and float(bar["Open"]) >= liquidation_price:
+                exit_price = float(bar["Open"])
+                reason = "Simulated liquidation"
+            elif direction > 0 and float(bar["Low"]) <= float(position["stop_price"]):
                 exit_price = min(float(bar["Open"]), float(position["stop_price"]))
                 reason = "Stop-Loss"
             elif direction < 0 and float(bar["High"]) >= float(position["stop_price"]):
@@ -282,6 +317,12 @@ class PaperEngine:
             if exit_price is not None:
                 self._close_position(portfolio, position, exit_price, now, reason)
                 events.append(f"{pair}: {reason}")
+                if reason == "Simulated liquidation":
+                    self.repository.add_event(
+                        "error",
+                        spec.strategy_id,
+                        f"{pair} hit the paper liquidation model at {exit_price:.8f}.",
+                    )
                 continue
 
             risk_per_unit = float(position["initial_risk"]) / max(
@@ -307,7 +348,7 @@ class PaperEngine:
         if daily_limit_breached(
             float(portfolio["day_start_equity"]), equity, self.settings.max_daily_loss
         ):
-            self._close_all(portfolio, positions, prices, now, "2% daily limit")
+            self._close_all(account=portfolio if False else portfolio, positions=positions, prices=prices, now=now, reason="2% daily limit")
             portfolio["daily_locked"] = 1
             events.append("I activated the daily limit")
             self.repository.add_event(
@@ -457,6 +498,7 @@ class PaperEngine:
             if direction > 0
             else fill - distance * self.settings.take_profit_r
         )
+        liquidation_price = estimate_liquidation_price(fill, direction, spec.max_leverage)
         initial_risk = units * (
             distance + candidate.price * 2 * (self.settings.fee_rate + self.settings.slippage_rate)
         )
@@ -489,12 +531,19 @@ class PaperEngine:
             "opened_at": opened_at,
         }
         self.repository.save_position(position)
+        margin = margin_required(notional, spec.max_leverage)
+        liquidation_text = (
+            f", est. paper liquidation {liquidation_price:.8f}"
+            if liquidation_price is not None
+            else ""
+        )
         self.repository.add_event(
             "info",
             spec.strategy_id,
             (
                 f"Paper-{position['side']} {candidate.pair}: {notional:.2f} EUR Nominal, "
-                f"modelled risk {initial_risk:.2f} EUR."
+                f"max {spec.max_leverage:g}x, margin {margin:.2f} EUR, "
+                f"modelled risk {initial_risk:.2f} EUR{liquidation_text}."
             ),
         )
         return position
