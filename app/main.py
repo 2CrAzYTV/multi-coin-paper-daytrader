@@ -9,19 +9,19 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .backtest import Backtester
 from .config import Settings
 from .db import Repository
 from .engine import PaperEngine
 from .market_data import MarketData, MarketDataError
 from .scheduler import scheduler_loop
+from .walk_forward import WalkForwardBacktester
 
 
 settings = Settings.from_env()
 repository = Repository(settings.database_path, settings.starting_capital)
 market = MarketData(settings)
 engine = PaperEngine(settings, repository, market)
-backtester = Backtester(settings, market)
+backtester = WalkForwardBacktester(settings, market)
 static_dir = Path(__file__).parent / "static"
 
 
