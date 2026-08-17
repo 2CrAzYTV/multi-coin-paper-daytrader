@@ -55,7 +55,7 @@ class ReleaseAssetTests(unittest.TestCase):
             "MAX_TRADES_PER_DAY": "3",
             "FEE_RATE": "0.001",
             "SLIPPAGE_RATE": "0.0005",
-            "PAIRS": "BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR",
+            "PAIRS": "BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR,LINK-EUR,AVAX-EUR,SUI-EUR,TAO-EUR,DOGE-EUR",
             "CANDLE_INTERVAL": "15m",
             "TREND_INTERVAL": "1h",
             "FAST_WINDOW": "9",
@@ -64,12 +64,20 @@ class ReleaseAssetTests(unittest.TestCase):
             "TREND_SLOW_WINDOW": "50",
             "ATR_WINDOW": "14",
             "RSI_WINDOW": "14",
+            "SIGNAL_MIN_STRENGTH": "0.12",
+            "TREND_MIN_STRENGTH_PCT": "0.001",
+            "VOLUME_MULTIPLIER": "1.0",
+            "LONG_RSI_MIN": "48",
+            "LONG_RSI_MAX": "64",
+            "SHORT_RSI_MIN": "36",
+            "SHORT_RSI_MAX": "52",
+            "EXIT_CONFIRMATION_BARS": "2",
             "STOP_ATR_MULTIPLE": "1.5",
             "MINIMUM_STOP_PCT": "0.006",
             "TAKE_PROFIT_R": "2.0",
             "TRAILING_TRIGGER_R": "1.0",
             "HISTORY_BARS": "500",
-            "BACKTEST_BARS": "1000",
+            "BACKTEST_BARS": "5000",
             "DATA_SOURCE": "demo",
             "FUSION_BASE_URL": "https://api.fusion.bitpanda.com",
             "APP_TIMEZONE": "Europe/Berlin",
@@ -99,7 +107,7 @@ class ReleaseAssetTests(unittest.TestCase):
 
         overview = root.findtext("Overview") or ""
         requires = root.findtext("Requires") or ""
-        self.assertIn("paper-only", overview)
+        self.assertIn("paper-only", overview.lower())
         self.assertIn("cannot place real-money orders", overview)
         self.assertIn("PAPER_ONLY=true", requires)
         self.assertIn("Read permission only", requires)
