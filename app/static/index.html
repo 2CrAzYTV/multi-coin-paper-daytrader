@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Multi-Coin Paper Daytrader</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark">MC</span>
+        <span><strong>Multi-Coin Daytrader</strong><small>Paper · Unraid Edition</small></span>
+      </a>
+      <span class="paper-badge"><i></i> PAPER ONLY</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Fünf Märkte. Ein gemeinsames Risikobudget.</p>
+          <h1>Krypto-Daytrading.<br /><span>Ohne Echtgeld.</span></h1>
+          <p class="hero-copy">
+            Der Bot prüft liquide EUR-Paare auf 15-Minuten-Signale und vergleicht
+            Long-only, Long/Short sowie maximal 2× Hebel. Jede Ausführung bleibt simuliert.
+          </p>
+        </div>
+        <div class="hero-panel">
+          <span class="pulse"></span>
+          <div><small>Status</small><strong id="systemStatus">Wird geladen …</strong></div>
+          <div><small>Prüfung</small><strong id="nextRun">–</strong></div>
+          <div><small>Datenquelle</small><strong id="dataSource">–</strong></div>
+        </div>
+      </section>
+
+      <section class="risk-grid" aria-label="Risikogrenzen">
+        <article class="metric"><span>Virtuelles Kapital</span><strong id="capital">–</strong><small>je Vergleichsstrategie</small></article>
+        <article class="metric"><span>Risiko je Trade</span><strong id="tradeRisk">–</strong><small>portfolioweit berechnet</small></article>
+        <article class="metric"><span>Offenes Gesamtrisiko</span><strong id="aggregateRisk">–</strong><small>über alle Coins</small></article>
+        <article class="metric"><span>Tageslimit</span><strong id="dailyRisk">–</strong><small>über alle Trades</small></article>
+        <article class="metric"><span>Not-Aus</span><strong id="hardStop">–</strong><small>bis zum manuellen Reset</small></article>
+      </section>
+
+      <section class="control-panel panel">
+        <div>
+          <p class="section-kicker">Marktuniversum</p>
+          <h2>Ausgewählte EUR-Paare</h2>
+          <div id="pairChips" class="pair-chips"></div>
+          <p id="sourceHint">–</p>
+        </div>
+        <div class="button-row">
+          <button class="button primary" id="runButton">Jetzt prüfen</button>
+          <button class="button secondary" id="backtestButton">Multi-Coin-Backtest</button>
+        </div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div><p class="section-kicker">Scanner</p><h2>Letzte Marktsignale</h2></div>
+          <span class="muted">15 min · Trendfilter 1 h</span>
+        </div>
+        <div id="marketGrid" class="market-grid"></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div><p class="section-kicker">Live-Simulation</p><h2>Paper-Portfolios</h2></div>
+          <span class="muted" id="lastUpdate">Noch kein Lauf</span>
+        </div>
+        <div id="portfolioGrid" class="portfolio-grid"></div>
+      </section>
+
+      <section class="panel positions-panel">
+        <div class="section-heading compact"><div><p class="section-kicker">Exposition</p><h2>Offene Paper-Positionen</h2></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Strategie</th><th>Paar</th><th>Seite</th><th>Nominal</th><th>Stop</th><th>Ziel</th><th>Offen</th></tr></thead>
+            <tbody id="positionRows"><tr><td colspan="7" class="muted">Keine Position geöffnet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="section-heading">
+          <div><p class="section-kicker">Entwicklung</p><h2 id="chartTitle">Paper-Kontostände</h2></div>
+          <div id="chartLegend" class="legend"></div>
+        </div>
+        <div id="chartEmpty" class="empty-state">Starte den ersten Paper-Lauf oder Backtest.</div>
+        <svg id="equityChart" viewBox="0 0 1000 320" role="img" aria-label="Entwicklung der simulierten Kontostände"></svg>
+      </section>
+
+      <section class="section-block" id="backtestSection" hidden>
+        <div class="section-heading">
+          <div><p class="section-kicker">Historische Simulation</p><h2>Multi-Coin-Backtest</h2></div>
+          <span class="muted" id="backtestPeriod"></span>
+        </div>
+        <div id="backtestGrid" class="backtest-grid"></div>
+        <p class="disclaimer">
+          Ein Backtest ist kein Renditeversprechen. Die relativ kurze Intraday-Historie,
+          Gebührenannahmen, Ausführung und künftige Marktbedingungen können deutlich abweichen.
+        </p>
+      </section>
+
+      <section class="split-grid">
+        <section class="panel">
+          <div class="section-heading compact"><div><p class="section-kicker">Journal</p><h2>Letzte Trades</h2></div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Strategie</th><th>Paar</th><th>Seite</th><th>Ergebnis</th><th>Status</th></tr></thead>
+              <tbody id="tradeRows"><tr><td colspan="5" class="muted">Noch keine Trades.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading compact"><div><p class="section-kicker">Sicherheitsmodell</p><h2>Globale Bremsen</h2></div></div>
+          <ul class="guard-list">
+            <li>Maximal <strong id="maxPositions">–</strong> Positionen gleichzeitig</li>
+            <li>Maximal <strong id="maxTrades">–</strong> neue Trades pro Tag</li>
+            <li>Alle Positionen werden täglich geschlossen</li>
+            <li>Kein Order-, Konto- oder Transfer-Endpunkt im Programm</li>
+          </ul>
+        </section>
+      </section>
+
+      <section class="panel events-panel">
+        <div class="section-heading compact"><div><p class="section-kicker">System</p><h2>Ereignisse</h2></div></div>
+        <div id="eventList" class="event-list"><p class="muted">Noch keine Ereignisse.</p></div>
+      </section>
+
+      <section class="danger-zone">
+        <div><strong>Paper-Konten zurücksetzen</strong><p>Löscht ausschließlich lokale Simulationen und startet wieder bei 1.000 €.</p></div>
+        <button id="resetButton" class="button danger">Paper-Daten löschen</button>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

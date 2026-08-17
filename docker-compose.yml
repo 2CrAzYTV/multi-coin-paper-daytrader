@@ -1,0 +1,21 @@
+services:
+  paper-trading-bot:
+    build: .
+    container_name: paper-trading-bot
+    user: "${PUID:-99}:${PGID:-100}"
+    env_file:
+      - .env
+    ports:
+      - "${WEB_PORT:-8787}:8787"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    read_only: true
+    init: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 20s
