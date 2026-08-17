@@ -50,6 +50,9 @@ class SimAccount:
     trade_pnls: list[float] = field(default_factory=list)
     long_trade_pnls: list[float] = field(default_factory=list)
     short_trade_pnls: list[float] = field(default_factory=list)
+    pair_trade_pnls: dict[str, list[float]] = field(default_factory=dict)
+    pair_long_trade_pnls: dict[str, list[float]] = field(default_factory=dict)
+    pair_short_trade_pnls: dict[str, list[float]] = field(default_factory=dict)
     curve: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -343,7 +346,13 @@ class Backtester:
         net = gross - float(position["entry_fee"]) - exit_fee
         account.balance += gross - exit_fee
         account.trade_pnls.append(net)
-        (account.long_trade_pnls if direction > 0 else account.short_trade_pnls).append(net)
+        account.pair_trade_pnls.setdefault(pair, []).append(net)
+        if direction > 0:
+            account.long_trade_pnls.append(net)
+            account.pair_long_trade_pnls.setdefault(pair, []).append(net)
+        else:
+            account.short_trade_pnls.append(net)
+            account.pair_short_trade_pnls.setdefault(pair, []).append(net)
         return net > 0
 
     def _close_all(self, account: SimAccount, prices: dict[str, float], slippage: float) -> None:
@@ -432,6 +441,7 @@ class Backtester:
             "short_trades": None,
             "short_win_rate_pct": None,
             "short_pnl_eur": None,
+            "pair_attribution": [],
             "hard_locked": False,
             "curve": _downsample(curve),
         }
@@ -451,6 +461,29 @@ def _trade_diagnostics(account: SimAccount) -> dict[str, Any]:
 
     long_count, long_win_rate, long_pnl = side_stats(account.long_trade_pnls)
     short_count, short_win_rate, short_pnl = side_stats(account.short_trade_pnls)
+
+    pair_attribution = []
+    for pair in sorted(account.pair_trade_pnls):
+        values = account.pair_trade_pnls[pair]
+        pair_wins = [value for value in values if value > 0]
+        long_values = account.pair_long_trade_pnls.get(pair, [])
+        short_values = account.pair_short_trade_pnls.get(pair, [])
+        pair_attribution.append(
+            {
+                "pair": pair,
+                "trades": len(values),
+                "wins": len(pair_wins),
+                "win_rate_pct": round(len(pair_wins) / len(values) * 100, 1) if values else 0.0,
+                "pnl_eur": round(sum(values), 2),
+                "average_pnl_eur": round(sum(values) / len(values), 3) if values else 0.0,
+                "long_trades": len(long_values),
+                "long_pnl_eur": round(sum(long_values), 2),
+                "short_trades": len(short_values),
+                "short_pnl_eur": round(sum(short_values), 2),
+            }
+        )
+    pair_attribution.sort(key=lambda item: (-item["pnl_eur"], item["pair"]))
+
     return {
         "profit_factor": round(profit_factor, 3) if profit_factor is not None else None,
         "expectancy_eur": round(sum(account.trade_pnls) / len(account.trade_pnls), 3)
@@ -464,6 +497,7 @@ def _trade_diagnostics(account: SimAccount) -> dict[str, Any]:
         "short_trades": short_count,
         "short_win_rate_pct": round(short_win_rate, 1),
         "short_pnl_eur": round(short_pnl, 2),
+        "pair_attribution": pair_attribution,
     }
 
 
