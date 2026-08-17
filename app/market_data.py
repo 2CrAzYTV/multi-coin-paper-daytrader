@@ -122,7 +122,7 @@ class MarketData:
     def _get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         if not self.settings.fusion_read_api_key:
             raise MarketDataError(
-                "I require a Fusion API key in .env with Read permission only."
+                "I require a Fusion API key with Read permission when DATA_SOURCE=fusion."
             )
         try:
             import httpx
