@@ -32,14 +32,7 @@ def _auto_coin_scan_requested() -> bool:
 
 
 def _refresh_coin_universe() -> tuple[str, ...]:
-    """Discover every active Fusion EUR pair and make it the current research universe.
-
-    The Settings dataclass is frozen to prevent accidental configuration mutation. The
-    automatically discovered universe is the one deliberate runtime exception: all
-    engine/backtest components share the same Settings instance, so updating `pairs`
-    here replaces the old PAIRS container variable without duplicating pair-selection
-    logic throughout the application.
-    """
+    """Discover every active Fusion EUR pair and make it the current research universe."""
     if settings.data_source != "fusion" or not _auto_coin_scan_requested():
         return tuple(settings.pairs)
 
@@ -56,19 +49,9 @@ async def lifespan(_: FastAPI):
     if settings.data_source == "fusion" and _auto_coin_scan_requested():
         try:
             pairs = await asyncio.to_thread(_refresh_coin_universe)
-            repository.add_event(
-                "info",
-                None,
-                f"Automatic Fusion coin scan selected {len(pairs)} active EUR pairs.",
-            )
+            repository.add_event("info", None, f"Automatic Fusion coin scan selected {len(pairs)} active EUR pairs.")
         except Exception as exc:
-            # A temporary discovery failure must not make the dashboard unavailable.
-            # Manual scans/backtests retry discovery before they run.
-            repository.add_event(
-                "warning",
-                None,
-                f"Automatic Fusion coin scan could not refresh at startup: {exc}",
-            )
+            repository.add_event("warning", None, f"Automatic Fusion coin scan could not refresh at startup: {exc}")
     task = asyncio.create_task(scheduler_loop(engine, settings, repository))
     yield
     task.cancel()
@@ -76,13 +59,7 @@ async def lifespan(_: FastAPI):
         await task
 
 
-app = FastAPI(
-    title="Multi-Coin Paper Daytrader",
-    version="0.2.0",
-    docs_url="/api/docs",
-    redoc_url=None,
-    lifespan=lifespan,
-)
+app = FastAPI(title="Multi-Coin Paper Daytrader", version="0.2.0", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
@@ -112,39 +89,21 @@ async def favicon() -> FileResponse:
 
 @app.get("/health")
 async def health() -> dict:
-    return {
-        "status": "ok",
-        "paper_only": settings.paper_only,
-        "data_source": settings.data_source,
-        "auto_coin_scan": _auto_coin_scan_requested(),
-        "coin_count": len(settings.pairs),
-    }
+    return {"status": "ok", "paper_only": settings.paper_only, "data_source": settings.data_source, "auto_coin_scan": _auto_coin_scan_requested(), "coin_count": len(settings.pairs)}
 
 
 @app.get("/api/config")
 async def configuration() -> dict:
     public = settings.public_dict()
     public["auto_coin_scan"] = _auto_coin_scan_requested()
-    public["coin_universe_source"] = (
-        "fusion-auto" if settings.data_source == "fusion" and _auto_coin_scan_requested() else "configured-fallback"
-    )
-    public["paper_only_notice"] = (
-        "I expose read-only GET market-data access and no real-order function."
-    )
+    public["coin_universe_source"] = "fusion-auto" if settings.data_source == "fusion" and _auto_coin_scan_requested() else "configured-fallback"
+    public["paper_only_notice"] = "I expose read-only GET market-data access and no real-order function."
     return public
 
 
 @app.get("/api/status")
 async def status() -> dict:
-    return {
-        "paper_only": True,
-        "portfolios": engine.serialize_portfolios(),
-        "positions": engine.serialize_positions(),
-        "markets": repository.list_markets(),
-        "curves": repository.snapshot_series(),
-        "trades": repository.recent_trades(),
-        "events": repository.recent_events(),
-    }
+    return {"paper_only": True, "portfolios": engine.serialize_portfolios(), "positions": engine.serialize_positions(), "markets": repository.list_markets(), "curves": repository.snapshot_series(), "trades": repository.recent_trades(), "events": repository.recent_events()}
 
 
 @app.post("/api/paper/run")
@@ -164,12 +123,15 @@ async def run_backtest(request: BacktestRequest) -> dict:
     try:
         await asyncio.to_thread(_refresh_coin_universe)
         result = await asyncio.to_thread(backtester.run, request.bars)
+        skipped = result.get("skipped_pairs", {})
         result["coin_scan"] = {
             "automatic": settings.data_source == "fusion" and _auto_coin_scan_requested(),
             "discovered_pairs": list(settings.pairs),
             "discovered_count": len(settings.pairs),
-            "failed_count": len(result.get("failures", {})),
             "usable_count": len(result.get("pairs", [])),
+            "skipped_count": len(skipped),
+            "skipped_pairs": skipped,
+            "failed_count": len(result.get("failures", {})),
         }
         return result
     except MarketDataError as exc:
@@ -183,7 +145,4 @@ async def reset_paper_accounts(confirm: str = Query(...)) -> dict:
     if confirm != "RESET":
         raise HTTPException(status_code=400, detail="I require confirm=RESET for this action.")
     repository.reset()
-    return {
-        "status": "ok",
-        "message": "I reset only the local multi-coin paper accounts.",
-    }
+    return {"status": "ok", "message": "I reset only the local multi-coin paper accounts."}
