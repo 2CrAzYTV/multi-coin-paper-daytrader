@@ -1,13 +1,34 @@
-# How I install and operate the bot on Unraid
+# Install and operate Multi-Coin Paper Daytrader on Unraid
 
-I use the published container image directly, so I do not need a Git checkout,
-Docker Compose, or a `.env` file on my Unraid server. The dashboard has no
-login. I bind port `8787` only inside a trusted LAN and never expose it through
-a router port forward.
+This guide is written for a new user installing the public beta on an Unraid server. No Git checkout, Docker Compose, GitHub login, or GHCR token is required. A separate `.env` file is not required.
 
-## 1. I prepare persistent app data
+## Public release resources
 
-I run this once in the Unraid terminal:
+Container image:
+
+```text
+ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
+```
+
+Unraid XML template:
+
+```text
+https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.xml
+```
+
+Repository:
+
+```text
+https://github.com/2CrAzYTV/multi-coin-paper-daytrader
+```
+
+The dashboard has no login. Keep port `8787` inside a trusted LAN and never expose it directly through a router port-forward.
+
+## 1. Clean installation
+
+### Prepare persistent app data
+
+Run once in the Unraid terminal:
 
 ```bash
 mkdir -p /mnt/user/appdata/paper-trading-bot/data
@@ -15,40 +36,90 @@ chown -R nobody:users /mnt/user/appdata/paper-trading-bot/data
 chmod 775 /mnt/user/appdata/paper-trading-bot/data
 ```
 
-I deliberately run the container without root privileges as UID/GID `99:100`.
-These permissions allow SQLite to create and update the database without
-weakening that runtime restriction.
+The container runs without root privileges as UID/GID `99:100`. These permissions allow SQLite to create and update the database.
 
-A separate `.env` file is not required. The native Unraid template passes all
-application settings directly as container variables. The host WebUI port is
-handled by Unraid's port mapping, and the runtime UID/GID is fixed by the
-hardened `--user=99:100` Extra Parameter rather than duplicated as application
-environment variables.
+### Confirm the public image is anonymously accessible
 
-## 2. I use the public image
-
-I use this repository value in Unraid:
-
-```text
-ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
-```
-
-Once the package is public, no GHCR token or registry login is required. I can
-test an anonymous pull with:
+This is optional but useful for troubleshooting:
 
 ```bash
-docker logout ghcr.io
+docker logout ghcr.io 2>/dev/null || true
 docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-## 3. I create the container from the template
+No token or registry login should be required.
 
-The included
-[`unraid/multi-coin-paper-daytrader.xml`](../unraid/multi-coin-paper-daytrader.xml)
-contains the image, WebUI, icon, data mapping, hardened runtime and the full bot
-configuration.
+### Load the Unraid template
 
-The application defaults exposed by the template are:
+Use the public XML template from this repository. The included `unraid/multi-coin-paper-daytrader.xml` contains the image reference, WebUI, icon, data mapping, hardened runtime options and all application variables.
+
+For a first installation, keep these important values:
+
+```text
+Repository: ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
+WebUI Port: 8787
+Persistent Data: /mnt/user/appdata/paper-trading-bot/data
+PAPER_ONLY: true
+Market Data Source: demo
+Bitpanda Key: empty
+Application Timezone: Europe/Berlin
+UI Language: de
+```
+
+Select **Apply**. The first start in `demo` mode needs no external API key.
+
+## 2. Verify the first start
+
+Run:
+
+```bash
+docker inspect paper-trading-bot \
+  --format 'Status={{.State.Status}} Health={{.State.Health.Status}} Image={{.Config.Image}}'
+curl -fsS http://127.0.0.1:8787/health
+docker logs --tail=50 paper-trading-bot
+```
+
+Expected health response in demo mode:
+
+```json
+{"status":"ok","paper_only":true,"data_source":"demo"}
+```
+
+Open the dashboard at:
+
+```text
+http://UNRAID-IP:8787
+```
+
+A successful clean install therefore means: container `running`, health `healthy`, `/health` returns HTTP 200, and the dashboard opens without any previous appdata or local template state.
+
+## 3. Enable read-only Bitpanda Fusion market data
+
+Only after the demo-mode clean install works:
+
+1. Create a Bitpanda Fusion API key with **Read** permission only.
+2. Do **not** enable **Trade** or **Transfer**.
+3. Edit the Unraid container.
+4. Change **Market Data Source** from `demo` to `fusion`.
+5. Enter the key in the masked **Bitpanda Key** field.
+6. Select **Apply**.
+7. Verify:
+
+```bash
+curl -fsS http://127.0.0.1:8787/health
+```
+
+Expected:
+
+```json
+{"status":"ok","paper_only":true,"data_source":"fusion"}
+```
+
+`Mask="true"` hides the key in the Unraid form but **does not encrypt it**. Unraid can persist container-variable values in its local Docker-template configuration. Protect `/boot/config` and its backups, and never share a saved local template containing a real key.
+
+## 4. Default application configuration
+
+The template exposes these defaults:
 
 ```dotenv
 PAPER_ONLY=true
@@ -89,94 +160,39 @@ DATA_DIR=/data
 TZ=Europe/Berlin
 ```
 
-The **Bitpanda Key** field is intentionally empty and masked in the Unraid form.
-I only fill it when I select `DATA_SOURCE=fusion`, and I create the Bitpanda
-Fusion key with **Read** permission only while leaving **Trade** and **Transfer**
-disabled.
-
-Masking is not encryption. Unraid may persist environment-variable values in
-its local saved container template. I therefore protect `/boot/config`, do not
-share the saved template while it contains a real key, and use a Read-only key
-so the credential cannot place orders or transfer funds.
-
-The WebUI is mapped to port `8787`, persistent data is mapped from
-`/mnt/user/appdata/paper-trading-bot/data` to `/data`, and the container uses
-these hardened **Extra Parameters**:
+The WebUI maps to port `8787`; persistent data maps `/mnt/user/appdata/paper-trading-bot/data` to `/data`. Hardened Extra Parameters are:
 
 ```text
 --user=99:100 --read-only --init --tmpfs=/tmp:size=64m,mode=1777 --security-opt=no-new-privileges:true --cap-drop=ALL --pids-limit=2048 --restart=unless-stopped --stop-timeout=20
 ```
 
-I keep `PAPER_ONLY=true`. This release rejects any configuration that disables
-paper-only mode and cannot place real-money orders.
+`PAPER_ONLY=true` must remain enabled. The application rejects a configuration that disables paper-only mode and contains no real-money order implementation.
 
-## 4. I verify the first start
+## 5. Language
 
-After I select **Apply**, I expect Unraid to report `healthy`. I also run:
-
-```bash
-docker inspect paper-trading-bot \
-  --format 'Status={{.State.Status}} Health={{.State.Health.Status}} Image={{.Config.Image}}'
-curl -fsS http://127.0.0.1:8787/health
-docker logs --tail=50 paper-trading-bot
-```
-
-In demo mode I expect:
-
-```json
-{"status":"ok","paper_only":true,"data_source":"demo"}
-```
-
-I open the dashboard at `http://UNRAID-IP:8787`.
-
-## 5. I select English or German
-
-The Unraid template defaults `APP_LANGUAGE=de`. I can change that field to
-`en` before applying the container. I can also use the language selector in the
-top bar to switch the complete dashboard between English and German immediately.
-The browser stores my selection on that device.
-
-A stored browser selection takes precedence over the container default. Changing
-the selector does not restart the container and does not alter paper trades,
-strategy rules, or market data.
-
-## 6. I enable read-only current market data
-
-I change **Market Data Source** from `demo` to `fusion` and fill **Bitpanda
-Key**. I create that key with **Read** permission only and leave **Trade** and
-**Transfer** disabled. I then select **Apply** so Unraid recreates the container
-with the changed environment variables.
+The template defaults `APP_LANGUAGE=de`. Set it to `en` before applying if preferred. The dashboard language selector can switch English/German immediately; the browser stores that choice locally.
 
 ## Updates, backup, and rollback
 
-### How my updates work
+### Updates
 
-Every successful push to `main` runs tests and publishes a new `:latest` image.
-The workflow also publishes an immutable `sha-<commit>` tag. Because my Unraid
-template tracks `:latest`, Unraid can detect a changed registry digest.
+Every successful push to `main` runs tests and publishes a new `:latest` image plus an immutable `sha-<commit>` tag.
 
-I install an update with:
+On Unraid:
 
 1. **Docker → Check for Updates**
 2. **Update** or **Force Update** on `paper-trading-bot`
-3. verify health, logs, and the dashboard
+3. verify health, logs, and dashboard
 
-Unraid pulls the changed image and recreates the container from its saved
-template. My bind mount at `/mnt/user/appdata/paper-trading-bot/data` survives
-this process.
+The `/data` bind mount survives recreation.
 
-Important: Unraid keeps the locally saved template of an existing container. If
-the repository template itself gains or removes fields, an ordinary image
-update may not automatically change those XML entries in the locally saved
-template. In that case I recreate the container from the current repository
-template while keeping the same persistent `/data` mapping.
+Unraid keeps a locally saved template for an installed container. An image update does not necessarily update that saved template. If a release adds or removes template fields, recreate the container from the current public XML while keeping the same persistent `/data` mapping.
 
-I know that `docker restart` and `--restart=unless-stopped` do not pull a new
-image. They only restart the locally installed image.
+`docker restart` and `--restart=unless-stopped` do not pull new images.
 
-### How I back up SQLite
+### Back up SQLite
 
-For a consistent backup, I briefly stop the container:
+For a consistent backup:
 
 ```bash
 docker stop paper-trading-bot
@@ -186,9 +202,9 @@ cp -a \
 docker start paper-trading-bot
 ```
 
-### How I record and restore an image digest
+### Record and restore an image digest
 
-Before an update, I record the exact installed digest:
+Before an update:
 
 ```bash
 docker image inspect \
@@ -196,38 +212,20 @@ docker image inspect \
   --format '{{index .RepoDigests 0}}'
 ```
 
-To roll back, I temporarily replace `:latest` in the Unraid **Repository** field
-with the full `@sha256:…` reference and select **Apply**.
+For rollback, temporarily replace `:latest` in the Unraid **Repository** field with the complete `@sha256:…` reference and select **Apply**.
 
 ## Troubleshooting
 
-### My market prices do not appear to match Bitpanda
+### `unauthorized` while pulling
 
-I first check that the dashboard reports **Bitpanda Fusion** as its data source.
-The scanner displays the close of the latest completed 15-minute Fusion candle,
-while the Bitpanda app displays a continuously changing quote. I therefore
-expect a small time- and venue-dependent difference.
-
-I display market prices below €1 with four decimal places and prices below
-€0.01 with six decimal places. I keep portfolio balances at two decimal places.
-
-If I have just changed `DATA_SOURCE=demo` to `DATA_SOURCE=fusion`, my database
-may still contain the last saved demo snapshots. For a clean Fusion simulation,
-I use **Reset my paper accounts → Delete paper data**, confirm the deletion, and
-then select **Run scan now**.
-
-### I receive `unauthorized` while pulling
-
-After the GHCR package is public, I remove stale credentials and retry:
+The public package does not require authentication. Remove stale credentials and retry:
 
 ```bash
 docker logout ghcr.io
 docker pull ghcr.io/2crazytv/multi-coin-paper-daytrader:latest
 ```
 
-### My container runs but the WebUI does not open
-
-I check the binding and both local routes:
+### WebUI does not open
 
 ```bash
 docker ps --filter 'name=paper-trading-bot'
@@ -236,4 +234,14 @@ curl -I --max-time 5 http://127.0.0.1:8787/
 curl -I --max-time 5 http://UNRAID-IP:8787/
 ```
 
-I expect `8787/tcp` to map to `0.0.0.0:8787` or my intended LAN address.
+Expect `8787/tcp` to map to `0.0.0.0:8787` or the intended LAN address.
+
+### Fusion prices differ from the Bitpanda app
+
+Confirm the dashboard reports **Bitpanda Fusion**. The scanner displays the close of the latest completed 15-minute Fusion candle; the Bitpanda app can display a continuously changing quote, so a time-dependent difference is expected.
+
+If switching an existing simulation from demo to Fusion, the database can still contain old demo snapshots. For a clean Fusion simulation use **Reset my paper accounts → Delete paper data**, then **Run scan now**.
+
+## Community Applications status
+
+The repository already contains a public Unraid XML template and public GHCR image, which are the core technical assets required for distribution. **Being installable from a public template is not the same as being listed in Unraid Community Applications.** A Community Applications listing requires the separate CA publication/submission process and should only be done after the clean-install test and public beta release are confirmed.
