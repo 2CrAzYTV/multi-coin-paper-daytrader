@@ -13,7 +13,7 @@
   <Overview>WebComm Calendar Sync automatically reads WebComm duty schedules, detects changes, synchronizes work shifts to ICS, CalDAV or Google Calendar, can send optional Telegram notifications, and can optionally integrate with Alarm-HUB. Chromium and persistent configuration are included in the container.</Overview>
   <Category>Tools: Productivity:</Category>
   <WebUI>https://[IP]:[PORT:8788]/</WebUI>
-  <Icon>https://webcomm.goevb.de/WebComm/App_Themes/Generic/logo_initmss_frei_small.png</Icon>
+  <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/webcomm-calendar-sync.png</Icon>
   <ExtraSearchTerms>webcomm calendar dienstplan shift schedule caldav google calendar telegram alarm hub arbeitszeit</ExtraSearchTerms>
   <Requires>WebComm credentials are required for schedule synchronization. Optional integrations such as Alarm-HUB, Telegram, CalDAV and Google Calendar can be left unconfigured. The built-in HTTPS mode uses a locally generated certificate; configure TLS SAN values for the address used to open the WebUI.</Requires>
   <Changes>Initial Community Apps release with duty-plan synchronization, Dienstkarten support, cache/status tools, calendar export, optional Alarm-HUB integration, Telegram notifications and configurable HTTPS.</Changes>
