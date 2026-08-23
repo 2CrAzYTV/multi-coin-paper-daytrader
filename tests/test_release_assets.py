@@ -1,109 +1,24 @@
 import unittest
-import xml.etree.ElementTree as ET
 from struct import unpack
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = "ghcr.io/2crazytv/multi-coin-paper-daytrader:latest"
-CA_TEMPLATE = ROOT / "templates/multi-coin-paper-daytrader.xml"
+CENTRAL_CA_REPO = "https://github.com/2CrAzYTV/unraid-community-apps"
+CENTRAL_TEMPLATE = (
+    "https://raw.githubusercontent.com/2CrAzYTV/unraid-community-apps/"
+    "main/templates/multi-coin-paper-daytrader.xml"
+)
 
 
 class ReleaseAssetTests(unittest.TestCase):
-    def test_unraid_template_tracks_latest_with_hardened_runtime(self):
-        root = ET.parse(CA_TEMPLATE).getroot()
-        self.assertEqual(root.tag, "Container")
-        self.assertEqual(root.findtext("Name"), "Multi-Coin Paper Daytrader")
-        self.assertEqual(root.findtext("Repository"), IMAGE)
-        self.assertEqual(
-            root.findtext("Icon"),
-            "https://raw.githubusercontent.com/2CrAzYTV/"
-            "multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.png",
-        )
-        self.assertEqual(
-            root.findtext("TemplateURL"),
-            "https://raw.githubusercontent.com/2CrAzYTV/"
-            "multi-coin-paper-daytrader/main/templates/multi-coin-paper-daytrader.xml",
-        )
-        extra = root.findtext("ExtraParams") or ""
-        for required in (
-            "--user=99:100",
-            "--read-only",
-            "--init",
-            "--tmpfs=/tmp:size=64m,mode=1777",
-            "--security-opt=no-new-privileges:true",
-            "--cap-drop=ALL",
-            "--pids-limit=2048",
-            "--restart=unless-stopped",
-            "--stop-timeout=20",
-        ):
-            self.assertIn(required, extra)
-        self.assertNotIn("--env-file=", extra)
-
-        configs = root.findall("Config")
-        variables = {
-            item.attrib["Target"]: item for item in configs if item.attrib["Type"] == "Variable"
-        }
-        required_defaults = {
-            "PAPER_ONLY": "true",
-            "STARTING_CAPITAL": "1000",
-            "RISK_PER_TRADE": "0.005",
-            "MAX_AGGREGATE_RISK": "0.01",
-            "MAX_DAILY_LOSS": "0.02",
-            "HARD_DRAWDOWN": "0.10",
-            "MAX_OPEN_POSITIONS": "2",
-            "MAX_TRADES_PER_DAY": "3",
-            "FEE_RATE": "0.001",
-            "SLIPPAGE_RATE": "0.0005",
-            "PAIRS": "BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR",
-            "CANDLE_INTERVAL": "15m",
-            "TREND_INTERVAL": "1h",
-            "FAST_WINDOW": "9",
-            "SLOW_WINDOW": "21",
-            "TREND_FAST_WINDOW": "20",
-            "TREND_SLOW_WINDOW": "50",
-            "ATR_WINDOW": "14",
-            "RSI_WINDOW": "14",
-            "STOP_ATR_MULTIPLE": "1.5",
-            "MINIMUM_STOP_PCT": "0.006",
-            "TAKE_PROFIT_R": "2.0",
-            "TRAILING_TRIGGER_R": "1.0",
-            "HISTORY_BARS": "500",
-            "BACKTEST_BARS": "1000",
-            "DATA_SOURCE": "demo",
-            "FUSION_BASE_URL": "https://api.fusion.bitpanda.com",
-            "APP_TIMEZONE": "Europe/Berlin",
-            "POLL_SECONDS": "60",
-            "SESSION_CLOSE_HOUR": "23",
-            "SESSION_CLOSE_MINUTE": "45",
-            "COOLDOWN_MINUTES": "45",
-            "APP_LANGUAGE": "de",
-            "DATA_DIR": "/data",
-            "TZ": "Europe/Berlin",
-        }
-        for target, expected in required_defaults.items():
-            self.assertIn(target, variables)
-            self.assertEqual(variables[target].attrib["Default"], expected)
-
-        for compose_only in ("WEB_PORT", "PUID", "PGID"):
-            self.assertNotIn(compose_only, variables)
-
-        self.assertIn("FUSION_READ_API_KEY", variables)
-        self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Mask"], "true")
-        self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Default"], "")
-        self.assertEqual(variables["FUSION_READ_API_KEY"].attrib["Name"], "Bitpanda Key")
-        self.assertEqual(
-            {item.attrib["Target"] for item in configs if item.attrib["Type"] == "Path"},
-            {"/data"},
-        )
-
-        overview = root.findtext("Overview") or ""
-        requires = root.findtext("Requires") or ""
-        self.assertIn("paper-only", overview)
-        self.assertIn("cannot place real-money orders", overview)
-        self.assertIn("PAPER_ONLY=true", requires)
-        self.assertIn("Read permission only", requires)
-        self.assertIn("Trade and Transfer disabled", requires)
+    def test_community_apps_reference_points_to_central_repository(self):
+        guide = (ROOT / "COMMUNITY_APPS.md").read_text()
+        self.assertIn(CENTRAL_CA_REPO, guide)
+        self.assertIn(CENTRAL_TEMPLATE, guide)
+        self.assertFalse((ROOT / "templates/multi-coin-paper-daytrader.xml").exists())
+        self.assertFalse((ROOT / "ca_profile.xml").exists())
 
     def test_compose_has_safe_defaults_without_env_file_dependency(self):
         compose = (ROOT / "docker-compose.yml").read_text()
@@ -139,8 +54,8 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("type=raw,value=latest,enable={{is_default_branch}}", workflow)
         self.assertIn("type=sha,prefix=sha-", workflow)
         self.assertIn("push: true", workflow)
-        self.assertIn("templates/multi-coin-paper-daytrader.xml", workflow)
-        self.assertNotIn("ET.parse('unraid/multi-coin-paper-daytrader.xml')", workflow)
+        self.assertNotIn("templates/multi-coin-paper-daytrader.xml", workflow)
+        self.assertNotIn("Validate Community Applications template", workflow)
 
     def test_public_unraid_guide_documents_update_and_persistence(self):
         guide = (ROOT / "docs/UNRAID.md").read_text()
@@ -165,7 +80,7 @@ class ReleaseAssetTests(unittest.TestCase):
             "DISCLAIMER.md",
             "CODE_OF_CONDUCT.md",
             "docs/UNRAID.md",
-            "templates/multi-coin-paper-daytrader.xml",
+            "COMMUNITY_APPS.md",
             "app/static/index.html",
         )
         german_markers = ("Veröffentlichungsstatus", "Jetzt prüfen", "Noch keine")
@@ -204,6 +119,7 @@ class ReleaseAssetTests(unittest.TestCase):
             "SUPPORT.md",
             "CONTRIBUTING.md",
             "CODE_OF_CONDUCT.md",
+            "COMMUNITY_APPS.md",
             ".github/CODEOWNERS",
             ".github/dependabot.yml",
             ".github/PULL_REQUEST_TEMPLATE.md",

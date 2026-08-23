@@ -50,9 +50,6 @@ jobs:
       - name: Validate JavaScript
         run: node --check app/static/app.js
 
-      - name: Validate Community Applications template
-        run: python -c "import xml.etree.ElementTree as ET; ET.parse('templates/multi-coin-paper-daytrader.xml')"
-
       - name: Validate container build on pull requests
         if: github.event_name == 'pull_request'
         run: docker build --pull --tag multi-coin-paper-daytrader:pr .
