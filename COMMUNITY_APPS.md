@@ -2,7 +2,7 @@
 
 The canonical Unraid Community Apps metadata for Multi-Coin Paper Daytrader is maintained in the central repository:
 
-`2CrAzYTV/unraid-community-apps`
+https://github.com/2CrAzYTV/unraid-community-apps
 
 Canonical template:
 
