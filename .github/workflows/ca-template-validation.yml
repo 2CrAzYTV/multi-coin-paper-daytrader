@@ -47,11 +47,11 @@ jobs:
               except Exception as exc:
                   errors.append(f"ca_profile.xml is invalid XML: {exc}")
 
-          required = {
+          required_common = {
               "Name", "Repository", "Network", "WebUI", "Icon", "Overview",
-              "Support", "Project", "TemplateURL", "ReadMe", "Category",
-              "Changes", "Date", "MinVer", "License"
+              "Support", "Project", "TemplateURL", "ReadMe", "Category", "Requires"
           }
+          required_webcomm = required_common | {"Changes", "Date", "MinVer", "License"}
           private_ip_re = re.compile(r"(?<!\d)(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(?!\d)")
           secret_markers = re.compile(r"(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})")
 
@@ -69,6 +69,8 @@ jobs:
               if root.tag != "Container":
                   errors.append(f"{path}: root must be Container")
                   continue
+
+              required = required_webcomm if path.name == "webcomm-calendar-sync.xml" else required_common
               missing = [tag for tag in sorted(required) if not (root.findtext(tag) or "").strip()]
               if missing:
                   errors.append(f"{path}: missing required fields: {', '.join(missing)}")
