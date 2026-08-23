@@ -80,10 +80,10 @@ class LegalSafetyGuardTests(unittest.TestCase):
 
     def test_community_apps_migration_preserves_safety_documentation(self):
         guide = (ROOT / "COMMUNITY_APPS.md").read_text()
-        disclaimer = (ROOT / "DISCLAIMER.md").read_text()
-        self.assertIn("2CrAzYTV/unraid-community-apps", guide)
-        self.assertIn("paper trading", disclaimer.lower())
-        self.assertIn("not affiliated with, endorsed by, sponsored by, or supported by Bitpanda", disclaimer)
+        disclaimer = (ROOT / "DISCLAIMER.md").read_text().lower()
+        self.assertIn("https://github.com/2CrAzYTV/unraid-community-apps", guide)
+        self.assertTrue("paper trading" in disclaimer or "paper-trading" in disclaimer)
+        self.assertIn("not affiliated with, endorsed by, sponsored by, or supported by bitpanda", disclaimer)
 
     def test_maintainer_policy_blocks_scope_creep_without_review(self):
         policy = (ROOT / "LEGAL_SAFETY.md").read_text()
