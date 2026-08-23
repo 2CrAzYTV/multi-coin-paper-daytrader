@@ -78,14 +78,12 @@ class LegalSafetyGuardTests(unittest.TestCase):
         for text in required:
             self.assertIn(text, disclaimer)
 
-    def test_community_applications_profile_is_unambiguous(self):
-        profile = (ROOT / "ca_profile.xml").read_text()
-        self.assertIn("paper-only", profile)
-        self.assertIn("cannot place real-money orders", profile)
-        self.assertIn("does not provide personalized investment advice", profile)
-        self.assertIn("no profit or return guarantee", profile)
-        self.assertIn("simulated paper signals only", profile)
-        self.assertIn("not affiliated with or endorsed by Bitpanda", profile)
+    def test_community_apps_migration_preserves_safety_documentation(self):
+        guide = (ROOT / "COMMUNITY_APPS.md").read_text()
+        disclaimer = (ROOT / "DISCLAIMER.md").read_text()
+        self.assertIn("2CrAzYTV/unraid-community-apps", guide)
+        self.assertIn("paper trading", disclaimer.lower())
+        self.assertIn("not affiliated with, endorsed by, sponsored by, or supported by Bitpanda", disclaimer)
 
     def test_maintainer_policy_blocks_scope_creep_without_review(self):
         policy = (ROOT / "LEGAL_SAFETY.md").read_text()
