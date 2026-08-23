@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CommunityApplications>
-  <Profile>Community Applications maintained by 2CrAzYTV for Unraid. This repository currently contains Multi-Coin Paper Daytrader, a paper-only crypto trading simulator, and Alarm-HUB, a standalone multi-user alarm service with embedded PostgreSQL and optional WebComm integration. Each application links to its own project repository for documentation, support, and source code.</Profile>
+  <Profile>Community Applications maintained by 2CrAzYTV for Unraid. This repository contains Multi-Coin Paper Daytrader, a paper-only crypto trading simulator, and Alarm-HUB, a standalone multi-user alarm service with embedded PostgreSQL and optional WebComm integration. Multi-Coin Paper Daytrader cannot place real-money orders, does not provide personalized investment advice, makes no profit or return guarantee, produces simulated paper signals only, and is not affiliated with or endorsed by Bitpanda. Each application links to its own project repository for documentation, support, and source code.</Profile>
   <Icon>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/unraid/multi-coin-paper-daytrader.png</Icon>
-  <WebPage>https://github.com/2CrAzYTV</WebPage>
-  <Forum>https://github.com/2CrAzYTV</Forum>
+  <WebPage>https://github.com/2CrAzYTV/multi-coin-paper-daytrader</WebPage>
+  <Forum>https://github.com/2CrAzYTV/multi-coin-paper-daytrader/issues</Forum>
 </CommunityApplications>
