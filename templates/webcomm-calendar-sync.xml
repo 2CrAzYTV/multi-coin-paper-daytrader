@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="2">
+  <Name>WebComm-Calendar-Sync</Name>
+  <Repository>ghcr.io/2crazytv/webcomm-calendar-sync:latest</Repository>
+  <Registry>https://ghcr.io/2crazytv/webcomm-calendar-sync</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Project>https://github.com/2CrAzYTV/webcomm-calendar-sync</Project>
+  <Support>https://github.com/2CrAzYTV/webcomm-calendar-sync/issues</Support>
+  <TemplateURL>https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/templates/webcomm-calendar-sync.xml</TemplateURL>
+  <ReadMe>https://raw.githubusercontent.com/2CrAzYTV/webcomm-calendar-sync/main/README.md</ReadMe>
+  <Overview>WebComm Calendar Sync automatically reads WebComm duty schedules, detects changes, synchronizes work shifts to ICS, CalDAV or Google Calendar, can send optional Telegram notifications, and can optionally integrate with Alarm-HUB. Chromium and persistent configuration are included in the container.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>https://[IP]:[PORT:8788]/</WebUI>
+  <Icon>https://webcomm.goevb.de/WebComm/App_Themes/Generic/logo_initmss_frei_small.png</Icon>
+  <ExtraSearchTerms>webcomm calendar dienstplan shift schedule caldav google calendar telegram alarm hub arbeitszeit</ExtraSearchTerms>
+  <Requires>WebComm credentials are required for schedule synchronization. Optional integrations such as Alarm-HUB, Telegram, CalDAV and Google Calendar can be left unconfigured. The built-in HTTPS mode uses a locally generated certificate; configure TLS SAN values for the address used to open the WebUI.</Requires>
+  <Changes>Initial Community Apps release with duty-plan synchronization, Dienstkarten support, cache/status tools, calendar export, optional Alarm-HUB integration, Telegram notifications and configurable HTTPS.</Changes>
+  <Date>2026-08-23</Date>
+  <MinVer>6.12</MinVer>
+  <License>MIT</License>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+
+  <Config Name="WebUI Port" Target="8788" Default="8788" Mode="tcp" Type="Port" Display="always" Required="true" Mask="false" Description="HTTPS port for the WebComm Calendar Sync WebUI.">8788</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/webcomm-calendar-sync" Mode="rw" Type="Path" Display="always" Required="true" Mask="false" Description="Persistent application settings, certificates, cached service cards and generated calendar data.">/mnt/user/appdata/webcomm-calendar-sync</Config>
+  <Config Name="Timezone" Target="TZ" Default="Europe/Berlin" Type="Variable" Display="always" Required="true" Mask="false">Europe/Berlin</Config>
+
+  <Config Name="HTTPS Enabled" Target="HTTPS_ENABLED" Default="true" Type="Variable" Display="always" Required="true" Mask="false" Description="Enable the built-in HTTPS WebUI.">true</Config>
+  <Config Name="TLS SAN IPs" Target="TLS_SAN_IPS" Default="" Type="Variable" Display="always" Required="false" Mask="false" Description="Optional IP addresses for the local HTTPS certificate, separated by commas."></Config>
+  <Config Name="TLS SAN Hostnames" Target="TLS_SAN_HOSTNAMES" Default="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="Optional DNS hostnames for the local HTTPS certificate, separated by commas."></Config>
+  <Config Name="TLS Certificate Days" Target="TLS_CERT_DAYS" Default="365" Type="Variable" Display="advanced" Required="true" Mask="false">365</Config>
+  <Config Name="TLS Renew Before Days" Target="TLS_RENEW_BEFORE_DAYS" Default="30" Type="Variable" Display="advanced" Required="true" Mask="false">30</Config>
+  <Config Name="TLS Check Hours" Target="TLS_CHECK_HOURS" Default="12" Type="Variable" Display="advanced" Required="true" Mask="false">12</Config>
+  <Config Name="TLS CA Days" Target="TLS_CA_DAYS" Default="3650" Type="Variable" Display="advanced" Required="true" Mask="false">3650</Config>
+
+  <Config Name="WebComm URL" Target="WEBCOMM_URL" Default="https://webcomm.goevb.de/WebComm/default.aspx?TestingCookie=1" Type="Variable" Display="always" Required="true" Mask="false">https://webcomm.goevb.de/WebComm/default.aspx?TestingCookie=1</Config>
+  <Config Name="WebComm Username" Target="WEBCOMM_USERNAME" Default="" Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="WebComm Password" Target="WEBCOMM_PASSWORD" Default="" Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <Config Name="Chromium Headless" Target="CHROMIUM_HEADLESS" Default="true" Type="Variable" Display="advanced" Required="true" Mask="false">true</Config>
+  <Config Name="Chromium Args" Target="CHROMIUM_ARGS" Default="--no-sandbox --disable-dev-shm-usage" Type="Variable" Display="advanced" Required="true" Mask="false">--no-sandbox --disable-dev-shm-usage</Config>
+
+  <Config Name="Sync Interval Minutes" Target="SYNC_INTERVAL_MINUTES" Default="15" Type="Variable" Display="always" Required="true" Mask="false">15</Config>
+  <Config Name="Sync Window Start" Target="SYNC_WINDOW_START" Default="07:00" Type="Variable" Display="always" Required="true" Mask="false">07:00</Config>
+  <Config Name="Sync Window End" Target="SYNC_WINDOW_END" Default="18:00" Type="Variable" Display="always" Required="true" Mask="false">18:00</Config>
+
+  <Config Name="Alarm-HUB Enabled" Target="ALARM_HUB_ENABLED" Default="false" Type="Variable" Display="always" Required="true" Mask="false">false</Config>
+  <Config Name="Alarm-HUB URL" Target="ALARM_HUB_URL" Default="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="Optional internal API address of Alarm-HUB."></Config>
+  <Config Name="Alarm-HUB Calendar/File URL" Target="ALARM_HUB_CALENDAR_URL" Default="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="Optional base URL used for clickable calendar and service-card links. Use an address reachable from the target device, such as a local IP, internal domain, reverse proxy, VPN or Tailscale address."></Config>
+  <Config Name="Alarm-HUB Sync Token" Target="ALARM_HUB_SYNC_TOKEN" Default="" Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+
+  <Config Name="Rule Source Check Hours" Target="RULE_SOURCE_CHECK_HOURS" Default="6" Type="Variable" Display="advanced" Required="true" Mask="false">6</Config>
+  <Config Name="TVN Source URL" Target="TVN_SOURCE_URL" Default="https://www.kav-nds.de/Aktuelles/Mitteilungen/" Type="Variable" Display="advanced" Required="true" Mask="false">https://www.kav-nds.de/Aktuelles/Mitteilungen/</Config>
+  <Config Name="TVN Update Hours" Target="TVN_UPDATE_HOURS" Default="24" Type="Variable" Display="advanced" Required="true" Mask="false">24</Config>
+  <Config Name="BOKraft Source URL" Target="BOKRAFT_SOURCE_URL" Default="https://www.gesetze-im-internet.de/bokraft_1975/" Type="Variable" Display="advanced" Required="true" Mask="false">https://www.gesetze-im-internet.de/bokraft_1975/</Config>
+  <Config Name="BOKraft Update Hours" Target="BOKRAFT_UPDATE_HOURS" Default="168" Type="Variable" Display="advanced" Required="true" Mask="false">168</Config>
+  <Config Name="BV Source URL" Target="BV_SOURCE_URL" Default="" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="BV Local Path" Target="BV_LOCAL_PATH" Default="/config/rules/bv.pdf" Type="Variable" Display="advanced" Required="true" Mask="false">/config/rules/bv.pdf</Config>
+  <Config Name="BV Update Hours" Target="BV_UPDATE_HOURS" Default="24" Type="Variable" Display="advanced" Required="true" Mask="false">24</Config>
+
+  <Config Name="Telegram Bot Token" Target="TELEGRAM_BOT_TOKEN" Default="" Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+  <Config Name="Telegram Chat ID" Target="TELEGRAM_CHAT_ID" Default="" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Telegram Send Screenshot" Target="TELEGRAM_SEND_SCREENSHOT" Default="true" Type="Variable" Display="advanced" Required="true" Mask="false">true</Config>
+  <Config Name="Telegram Notify Initial" Target="TELEGRAM_NOTIFY_INITIAL" Default="false" Type="Variable" Display="advanced" Required="true" Mask="false">false</Config>
+
+  <Config Name="Calendar Mode" Target="CALENDAR_MODE" Default="ics" Type="Variable" Display="always" Required="true" Mask="false" Description="Choose ics, caldav or google.">ics</Config>
+  <Config Name="Google Calendar ID" Target="GOOGLE_CALENDAR_ID" Default="" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Google Service Account File" Target="GOOGLE_SERVICE_ACCOUNT_FILE" Default="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="Optional path to the Google service-account JSON file when Google Calendar mode is used."></Config>
+  <Config Name="CalDAV URL" Target="CALDAV_URL" Default="" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="CalDAV Username" Target="CALDAV_USERNAME" Default="" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="CalDAV Password" Target="CALDAV_PASSWORD" Default="" Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+  <Config Name="CalDAV Calendar Name" Target="CALDAV_CALENDAR_NAME" Default="" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+</Container>
