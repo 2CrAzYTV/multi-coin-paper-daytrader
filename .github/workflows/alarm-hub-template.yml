@@ -1,0 +1,102 @@
+name: Validate Alarm-HUB Community Apps template
+
+on:
+  pull_request:
+    paths:
+      - 'templates/alarm-hub.xml'
+      - '.github/workflows/alarm-hub-template.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'templates/alarm-hub.xml'
+      - '.github/workflows/alarm-hub-template.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-alarm-hub-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate XML and stable install defaults
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          path = Path('templates/alarm-hub.xml')
+          root = ET.parse(path).getroot()
+          assert root.tag == 'Container'
+
+          def text(name):
+              node = root.find(name)
+              return (node.text or '').strip() if node is not None else ''
+
+          assert text('Name') == 'Alarm-HUB'
+          assert text('Repository') == 'ghcr.io/2crazytv/alarm-hub:latest'
+          assert text('Network') == 'bridge'
+          assert text('WebUI') == 'http://[IP]:[PORT:8080]/'
+          assert text('Icon') == 'https://github.com/2CrAzYTV/Alarm-HUB/raw/refs/heads/main/icon.png'
+          assert text('TemplateURL') == 'https://raw.githubusercontent.com/2CrAzYTV/multi-coin-paper-daytrader/main/templates/alarm-hub.xml'
+          assert text('ExtraParams') == '--restart unless-stopped'
+
+          configs = {item.attrib.get('Name'): item for item in root.findall('Config')}
+
+          port = configs['WebUI Port']
+          assert port.attrib['Target'] == '8080'
+          assert port.attrib['Default'] == '8080'
+          assert (port.text or '').strip() == '8080'
+
+          appdata = configs['Appdata']
+          assert appdata.attrib['Target'] == '/config'
+          assert appdata.attrib['Default'] == '/mnt/user/appdata/alarm-hub'
+          assert (appdata.text or '').strip() == '/mnt/user/appdata/alarm-hub'
+
+          mode = configs['Database Mode']
+          assert mode.attrib['Target'] == 'DATABASE_MODE'
+          assert mode.attrib['Default'] == 'embedded'
+          assert (mode.text or '').strip() == 'embedded'
+
+          database_url = configs['External Database URL']
+          assert database_url.attrib['Target'] == 'DATABASE_URL'
+          assert database_url.attrib['Required'] == 'false'
+          assert database_url.attrib['Mask'] == 'true'
+
+          secret = configs['Secret Key']
+          assert secret.attrib['Target'] == 'SECRET_KEY'
+          assert secret.attrib['Required'] == 'false'
+          assert secret.attrib['Mask'] == 'true'
+
+          timezone = configs['Default Timezone']
+          assert timezone.attrib['Target'] == 'DEFAULT_TIMEZONE'
+          assert timezone.attrib['Default'] == 'Europe/Berlin'
+
+          cookies = configs['Secure Session Cookies']
+          assert cookies.attrib['Target'] == 'SESSION_HTTPS_ONLY'
+          assert cookies.attrib['Default'] == 'false'
+          assert (cookies.text or '').strip() == 'false'
+
+          print('Alarm-HUB template defaults are stable and valid.')
+          PY
+
+      - name: Check public project resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --retry-delay 2 \
+            https://github.com/2CrAzYTV/Alarm-HUB/raw/refs/heads/main/icon.png \
+            -o /tmp/alarm-hub-icon.png
+          test -s /tmp/alarm-hub-icon.png
+          curl -fsSL --retry 3 --retry-delay 2 \
+            https://raw.githubusercontent.com/2CrAzYTV/Alarm-HUB/main/README.md \
+            -o /tmp/alarm-hub-readme.md
+          grep -q 'Alarm-HUB' /tmp/alarm-hub-readme.md
+
+      - name: Check public container image
+        shell: bash
+        run: |
+          docker manifest inspect ghcr.io/2crazytv/alarm-hub:latest >/dev/null
