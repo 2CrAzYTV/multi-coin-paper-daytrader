@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- I added an ADX trend-strength filter (`ADX_WINDOW`, `ADX_THRESHOLD`, 1h
+  timeframe) that gates the EMA crossover signal on genuine trend strength
+  instead of just EMA order. Backtested against ~10 days of real Fusion
+  15-minute data across ADX thresholds 0/15/20/25/30: return and max drawdown
+  improved monotonically with the threshold for every strategy variant (e.g.
+  long-only 1x: -2.83% return / 3.93% max drawdown / 15 trades unfiltered vs.
+  -1.97% / 3.09% / 12 trades at ADX 20). Defaulted to 20, the standard
+  "trending" convention - backtesting only ~10 days is not enough to prove an
+  edge on its own, but the pattern was consistent and directionally the same
+  across all three strategy variants.
 - I added a high-resolution transparent PNG app icon, linked its direct raw URL
   from the Unraid template, and serve the same asset from the container for
   private-installation caching on Unraid.

@@ -53,6 +53,8 @@ class Settings:
     trend_slow_window: int = 50
     atr_window: int = 14
     rsi_window: int = 14
+    adx_window: int = 14
+    adx_threshold: float = 20.0
     stop_atr_multiple: float = 1.5
     minimum_stop_pct: float = 0.006
     take_profit_r: float = 2.0
@@ -98,6 +100,8 @@ class Settings:
             trend_slow_window=_as_int("TREND_SLOW_WINDOW", 50),
             atr_window=_as_int("ATR_WINDOW", 14),
             rsi_window=_as_int("RSI_WINDOW", 14),
+            adx_window=_as_int("ADX_WINDOW", 14),
+            adx_threshold=_as_float("ADX_THRESHOLD", 20.0),
             stop_atr_multiple=_as_float("STOP_ATR_MULTIPLE", 1.5),
             minimum_stop_pct=_as_float("MINIMUM_STOP_PCT", 0.006),
             take_profit_r=_as_float("TAKE_PROFIT_R", 2.0),
@@ -151,6 +155,10 @@ class Settings:
             raise ValueError("I require FAST_WINDOW to be smaller than SLOW_WINDOW.")
         if not 2 <= self.trend_fast_window < self.trend_slow_window:
             raise ValueError("I require TREND_FAST_WINDOW to be smaller than TREND_SLOW_WINDOW.")
+        if not 2 <= self.adx_window <= 100:
+            raise ValueError("I require ADX_WINDOW to be between 2 and 100.")
+        if not 0 <= self.adx_threshold <= 60:
+            raise ValueError("I require ADX_THRESHOLD to be between 0 and 60.")
         if (
             self.candle_interval not in ALLOWED_INTERVALS
             or self.trend_interval not in ALLOWED_INTERVALS

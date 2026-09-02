@@ -91,13 +91,16 @@ class Backtester:
         trend = add_trend_indicators(hourly, self.settings)
         entry["TREND_FAST"] = trend["TREND_FAST"].reindex(entry.index, method="ffill")
         entry["TREND_SLOW"] = trend["TREND_SLOW"].reindex(entry.index, method="ffill")
+        entry["ADX"] = trend["ADX"].reindex(entry.index, method="ffill")
         previous_fast = entry["EMA_FAST"].shift(1)
         previous_slow = entry["EMA_SLOW"].shift(1)
         volume_ok = entry["Volume"] >= entry["VOLUME_MEDIAN"].fillna(0) * 0.8
+        trend_strong = entry["ADX"] >= self.settings.adx_threshold
         long_setup = (
             (previous_fast <= previous_slow)
             & (entry["EMA_FAST"] > entry["EMA_SLOW"])
             & (entry["TREND_FAST"] > entry["TREND_SLOW"])
+            & trend_strong
             & entry["RSI"].between(45, 70)
             & volume_ok
         )
@@ -105,6 +108,7 @@ class Backtester:
             (previous_fast >= previous_slow)
             & (entry["EMA_FAST"] < entry["EMA_SLOW"])
             & (entry["TREND_FAST"] < entry["TREND_SLOW"])
+            & trend_strong
             & entry["RSI"].between(30, 55)
             & volume_ok
         )

@@ -190,7 +190,7 @@ class PaperEngine:
                     ),
                     self.settings,
                 )
-                snapshot = signal_snapshot(pair, entry, trend)
+                snapshot = signal_snapshot(pair, entry, trend, self.settings)
                 packages[pair] = {
                     "entry": entry,
                     "trend": trend,
