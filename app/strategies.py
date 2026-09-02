@@ -7,9 +7,9 @@ from .config import Settings
 from .models import SignalSnapshot
 
 
-def _atr(data: pd.DataFrame, window: int) -> pd.Series:
+def _true_range(data: pd.DataFrame) -> pd.Series:
     previous_close = data["Close"].shift(1)
-    true_range = pd.concat(
+    return pd.concat(
         [
             data["High"] - data["Low"],
             (data["High"] - previous_close).abs(),
@@ -17,7 +17,30 @@ def _atr(data: pd.DataFrame, window: int) -> pd.Series:
         ],
         axis=1,
     ).max(axis=1)
+
+
+def _atr(data: pd.DataFrame, window: int) -> pd.Series:
+    true_range = _true_range(data)
     return true_range.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
+
+
+def _adx(data: pd.DataFrame, window: int) -> pd.Series:
+    """Wilder's ADX: how strongly a market is trending, independent of direction.
+
+    Used as a regime filter on top of the EMA/trend-direction signal - a
+    crossover during a directionless chop (low ADX) is far more likely to be
+    a whipsaw than the same crossover during a genuine trend.
+    """
+    up_move = data["High"].diff()
+    down_move = -data["Low"].diff()
+    plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
+    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
+    smoothed_tr = _true_range(data).ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
+    plus_di = 100 * plus_dm.ewm(alpha=1 / window, adjust=False, min_periods=window).mean() / smoothed_tr
+    minus_di = 100 * minus_dm.ewm(alpha=1 / window, adjust=False, min_periods=window).mean() / smoothed_tr
+    di_sum = (plus_di + minus_di).replace(0, np.nan)
+    dx = 100 * (plus_di - minus_di).abs() / di_sum
+    return dx.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
 
 
 def _rsi(close: pd.Series, window: int) -> pd.Series:
@@ -54,6 +77,7 @@ def add_trend_indicators(frame: pd.DataFrame, settings: Settings) -> pd.DataFram
     data["TREND_SLOW"] = data["Close"].ewm(
         span=settings.trend_slow_window, adjust=False
     ).mean()
+    data["ADX"] = _adx(data, settings.adx_window)
     data.replace([np.inf, -np.inf], np.nan, inplace=True)
     return data
 
@@ -62,6 +86,7 @@ def signal_snapshot(
     pair: str,
     entry_frame: pd.DataFrame,
     trend_frame: pd.DataFrame,
+    settings: Settings,
 ) -> SignalSnapshot:
     if len(entry_frame) < 2 or trend_frame.empty:
         raise ValueError(f"I do not have enough candles for {pair}.")
@@ -75,6 +100,7 @@ def signal_snapshot(
         current["RSI"],
         trend_bar["TREND_FAST"],
         trend_bar["TREND_SLOW"],
+        trend_bar["ADX"],
     )
     if any(pd.isna(value) for value in required):
         direction, trend, reason = 0, 0, "I do not have enough indicator data yet"
@@ -86,15 +112,18 @@ def signal_snapshot(
             "EMA_FAST"
         ] < current["EMA_SLOW"]
         trend = 1 if trend_bar["TREND_FAST"] > trend_bar["TREND_SLOW"] else -1
+        trend_strong = float(trend_bar["ADX"]) >= settings.adx_threshold
         volume_median = float(current.get("VOLUME_MEDIAN", 0) or 0)
         volume_ok = volume_median <= 0 or float(current["Volume"]) >= volume_median * 0.8
         rsi = float(current["RSI"])
-        if cross_up and trend > 0 and 45 <= rsi <= 70 and volume_ok:
+        if cross_up and trend > 0 and trend_strong and 45 <= rsi <= 70 and volume_ok:
             direction, reason = 1, "Long setup"
-        elif cross_down and trend < 0 and 30 <= rsi <= 55 and volume_ok:
+        elif cross_down and trend < 0 and trend_strong and 30 <= rsi <= 55 and volume_ok:
             direction, reason = -1, "Short setup"
         elif not volume_ok:
             direction, reason = 0, "Volume filter"
+        elif not trend_strong:
+            direction, reason = 0, "ADX trend-strength filter"
         else:
             direction, reason = 0, "I found no fresh EMA crossover"
     atr = 0.0 if pd.isna(current.get("ATR")) else float(current["ATR"])

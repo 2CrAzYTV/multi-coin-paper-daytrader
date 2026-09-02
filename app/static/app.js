@@ -392,6 +392,7 @@ function translateRuntimeText(value) {
     "Long setup": "Long-Signal",
     "Short setup": "Short-Signal",
     "Volume filter": "Volumenfilter",
+    "ADX trend-strength filter": "ADX-Trendstärkefilter",
     "I found no fresh EMA crossover": "Ich habe keine neue EMA-Kreuzung gefunden.",
     "I reset the multi-coin paper accounts.": "Ich habe die Multi-Coin-Paper-Konten zurückgesetzt.",
     "I reset only the local multi-coin paper accounts.": "Ich habe nur die lokalen Multi-Coin-Paper-Konten zurückgesetzt.",
