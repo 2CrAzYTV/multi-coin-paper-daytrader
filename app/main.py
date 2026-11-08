@@ -36,8 +36,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Multi-Coin Paper Daytrader",
-    version="0.2.0",
+    title="Multi-Coin Paper Trader",
+    version="0.3.0",
     docs_url="/api/docs",
     redoc_url=None,
     lifespan=lifespan,
@@ -46,7 +46,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 class BacktestRequest(BaseModel):
-    bars: int | None = Field(default=None, ge=100, le=1_000)
+    bars: int | None = Field(default=None, ge=100, le=1_440)
 
 
 @app.middleware("http")
@@ -128,5 +128,5 @@ async def reset_paper_accounts(confirm: str = Query(...)) -> dict:
     repository.reset()
     return {
         "status": "ok",
-        "message": "I reset only the local multi-coin paper accounts.",
+        "message": "I reset only the local paper account.",
     }

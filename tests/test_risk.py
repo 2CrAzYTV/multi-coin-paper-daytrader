@@ -1,59 +1,56 @@
 import unittest
 
-from app.config import Settings
-from app.risk import calculate_position_size, daily_limit_breached, drawdown
+from app.config import FUSION_ENTRY_TIER_FEE, Settings
+from app.risk import drawdown, walk_order_book
+from app.strategies import target_notional
 
 
 class RiskTests(unittest.TestCase):
-    def test_position_size_includes_costs_and_stays_inside_half_percent(self):
-        result = calculate_position_size(
-            equity=1_000,
-            entry_price=100,
-            stop_distance=2,
-            risk_rate=0.005,
-            max_leverage=2,
-            fee_rate=0.001,
-            slippage_rate=0.0005,
-        )
-        self.assertLessEqual(result.estimated_stop_loss, 5.000001)
-        self.assertLessEqual(result.notional, 2_000)
-        self.assertLessEqual(result.effective_leverage, 2)
+    def test_default_fee_is_the_fusion_entry_tier(self):
+        self.assertEqual(Settings().fee_rate, FUSION_ENTRY_TIER_FEE)
+        self.assertEqual(FUSION_ENTRY_TIER_FEE, 0.0025)
 
-    def test_remaining_portfolio_exposure_caps_new_position(self):
-        result = calculate_position_size(
-            equity=1_000,
-            entry_price=100,
-            stop_distance=0.01,
-            risk_rate=0.005,
-            max_leverage=2,
-            fee_rate=0,
-            slippage_rate=0,
-            max_notional=300,
-        )
-        self.assertAlmostEqual(result.notional, 300)
-
-    def test_daily_limit_and_drawdown(self):
-        self.assertFalse(daily_limit_breached(1_000, 981, 0.02))
-        self.assertTrue(daily_limit_breached(1_000, 980, 0.02))
+    def test_drawdown(self):
         self.assertAlmostEqual(drawdown(1_000, 900), 0.1)
+        self.assertEqual(drawdown(1_000, 1_100), 0.0)
 
-    def test_configuration_rejects_more_than_one_percent_trade_risk(self):
-        settings = Settings(risk_per_trade=0.011)
-        with self.assertRaises(ValueError):
-            settings.validate()
+    def test_target_notional_is_equal_share_limited_by_cash(self):
+        args = dict(pair_count=4, min_order_amount=30, max_order_amount=1e6, fee_rate=0.0025)
+        self.assertAlmostEqual(target_notional(equity=1_000, cash=1_000, **args), 250)
+        # spot: never more than the cash on hand (incl. the fee)
+        self.assertAlmostEqual(target_notional(equity=1_000, cash=100, **args), 100 / 1.0025)
+        # small account: equal share (25) is lifted to the exchange minimum
+        self.assertAlmostEqual(target_notional(equity=100, cash=100, **args), 30.3)
+        # not enough cash for the minimum -> no order
+        self.assertEqual(target_notional(equity=100, cash=20, **args), 0.0)
 
-    def test_configuration_rejects_more_than_two_percent_daily_loss(self):
-        settings = Settings(max_daily_loss=0.021)
-        with self.assertRaises(ValueError):
-            settings.validate()
+    def test_order_book_walk_buys_through_levels(self):
+        asks = [(100.0, 0.5), (101.0, 1.0)]
+        price, units = walk_order_book(asks, notional=100.0)
+        self.assertAlmostEqual(units, 0.5 + 50 / 101)
+        self.assertGreater(price, 100.0)
+        self.assertLess(price, 101.0)
+
+    def test_order_book_walk_sells_units_and_rejects_thin_books(self):
+        bids = [(99.0, 1.0), (98.0, 1.0)]
+        price, units = walk_order_book(bids, units=1.5)
+        self.assertAlmostEqual(units, 1.5)
+        self.assertAlmostEqual(price, (99 + 49) / 1.5)
+        self.assertIsNone(walk_order_book(bids, units=5))
 
     def test_configuration_is_paper_only(self):
-        settings = Settings(paper_only=False)
         with self.assertRaises(ValueError):
-            settings.validate()
+            Settings(paper_only=False).validate()
+
+    def test_configuration_rejects_bad_channels_and_positions(self):
+        with self.assertRaises(ValueError):
+            Settings(entry_window=20, exit_window=20).validate()
+        with self.assertRaises(ValueError):
+            Settings(max_open_positions=5).validate()
+        with self.assertRaises(ValueError):
+            Settings(candle_interval="15m").validate()
 
     def test_configuration_accepts_only_english_or_german(self):
-        Settings(app_language="en").validate()
         Settings(app_language="de").validate()
         with self.assertRaises(ValueError):
             Settings(app_language="fr").validate()

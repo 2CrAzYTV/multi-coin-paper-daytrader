@@ -7,7 +7,11 @@ from pathlib import Path
 
 
 PAIR_PATTERN = re.compile(r"^[A-Z0-9]{2,12}-EUR$")
-ALLOWED_INTERVALS = {"1m", "5m", "15m", "30m", "1h", "4h", "1d"}
+ALLOWED_INTERVALS = {"4h", "1d"}
+DEFAULT_PAIRS = ("BTC-EUR", "ETH-EUR", "SOL-EUR", "XRP-EUR")
+# Bitpanda Fusion charges 0.25% per order (maker and taker) in the entry
+# volume tier (< EUR 100,000 traded in 30 days).
+FUSION_ENTRY_TIER_FEE = 0.0025
 
 
 def _as_bool(value: str | None, default: bool) -> bool:
@@ -27,56 +31,36 @@ def _as_int(name: str, default: int) -> int:
 
 
 def _as_pairs(value: str | None) -> tuple[str, ...]:
-    raw = value or "BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR"
+    if not value or not value.strip():
+        return DEFAULT_PAIRS
     return tuple(
-        dict.fromkeys(item.strip().upper() for item in raw.split(",") if item.strip())
+        dict.fromkeys(item.strip().upper() for item in value.split(",") if item.strip())
     )
 
 
 @dataclass(frozen=True)
 class Settings:
-    app_name: str = "Multi-Coin Paper Daytrader"
+    """Spot trend-following paper simulator (long only, no leverage)."""
+
+    app_name: str = "Multi-Coin Paper Trader"
     app_language: str = "en"
     paper_only: bool = True
     starting_capital: float = 1_000.0
-    risk_per_trade: float = 0.005
-    max_aggregate_risk: float = 0.01
-    max_daily_loss: float = 0.02
-    hard_drawdown: float = 0.10
-    max_open_positions: int = 2
-    max_trades_per_day: int = 3
-    fee_rate: float = 0.001
+    fee_rate: float = FUSION_ENTRY_TIER_FEE
     slippage_rate: float = 0.0005
-    fast_window: int = 9
-    slow_window: int = 21
-    trend_fast_window: int = 20
-    trend_slow_window: int = 50
-    atr_window: int = 14
-    rsi_window: int = 14
-    adx_window: int = 14
-    adx_threshold: float = 20.0
-    stop_atr_multiple: float = 1.5
-    minimum_stop_pct: float = 0.006
-    take_profit_r: float = 2.0
-    trailing_trigger_r: float = 1.0
-    pairs: tuple[str, ...] = (
-        "BTC-EUR",
-        "ETH-EUR",
-        "SOL-EUR",
-        "XRP-EUR",
-        "ADA-EUR",
-    )
-    candle_interval: str = "15m"
-    trend_interval: str = "1h"
-    history_bars: int = 500
-    backtest_bars: int = 1_000
+    use_order_book: bool = True
+    entry_window: int = 55
+    exit_window: int = 20
+    atr_window: int = 20
+    max_open_positions: int = 4
+    pairs: tuple[str, ...] = DEFAULT_PAIRS
+    candle_interval: str = "1d"
+    history_bars: int = 120
+    backtest_bars: int = 1_440
     data_source: str = "demo"
     data_dir: Path = Path("data")
     timezone: str = "Europe/Berlin"
-    poll_seconds: int = 60
-    session_close_hour: int = 23
-    session_close_minute: int = 45
-    cooldown_minutes: int = 45
+    poll_seconds: int = 300
     fusion_read_api_key: str = ""
     fusion_base_url: str = "https://api.fusion.bitpanda.com"
 
@@ -86,38 +70,21 @@ class Settings:
             app_language=getenv("APP_LANGUAGE", "en").strip().lower(),
             paper_only=_as_bool(getenv("PAPER_ONLY"), True),
             starting_capital=_as_float("STARTING_CAPITAL", 1_000.0),
-            risk_per_trade=_as_float("RISK_PER_TRADE", 0.005),
-            max_aggregate_risk=_as_float("MAX_AGGREGATE_RISK", 0.01),
-            max_daily_loss=_as_float("MAX_DAILY_LOSS", 0.02),
-            hard_drawdown=_as_float("HARD_DRAWDOWN", 0.10),
-            max_open_positions=_as_int("MAX_OPEN_POSITIONS", 2),
-            max_trades_per_day=_as_int("MAX_TRADES_PER_DAY", 3),
-            fee_rate=_as_float("FEE_RATE", 0.001),
+            fee_rate=_as_float("FEE_RATE", FUSION_ENTRY_TIER_FEE),
             slippage_rate=_as_float("SLIPPAGE_RATE", 0.0005),
-            fast_window=_as_int("FAST_WINDOW", 9),
-            slow_window=_as_int("SLOW_WINDOW", 21),
-            trend_fast_window=_as_int("TREND_FAST_WINDOW", 20),
-            trend_slow_window=_as_int("TREND_SLOW_WINDOW", 50),
-            atr_window=_as_int("ATR_WINDOW", 14),
-            rsi_window=_as_int("RSI_WINDOW", 14),
-            adx_window=_as_int("ADX_WINDOW", 14),
-            adx_threshold=_as_float("ADX_THRESHOLD", 20.0),
-            stop_atr_multiple=_as_float("STOP_ATR_MULTIPLE", 1.5),
-            minimum_stop_pct=_as_float("MINIMUM_STOP_PCT", 0.006),
-            take_profit_r=_as_float("TAKE_PROFIT_R", 2.0),
-            trailing_trigger_r=_as_float("TRAILING_TRIGGER_R", 1.0),
+            use_order_book=_as_bool(getenv("USE_ORDER_BOOK"), True),
+            entry_window=_as_int("ENTRY_WINDOW", 55),
+            exit_window=_as_int("EXIT_WINDOW", 20),
+            atr_window=_as_int("ATR_WINDOW", 20),
+            max_open_positions=_as_int("MAX_OPEN_POSITIONS", 4),
             pairs=_as_pairs(getenv("PAIRS")),
-            candle_interval=getenv("CANDLE_INTERVAL", "15m").strip(),
-            trend_interval=getenv("TREND_INTERVAL", "1h").strip(),
-            history_bars=_as_int("HISTORY_BARS", 500),
-            backtest_bars=_as_int("BACKTEST_BARS", 1_000),
+            candle_interval=getenv("CANDLE_INTERVAL", "1d").strip(),
+            history_bars=_as_int("HISTORY_BARS", 120),
+            backtest_bars=_as_int("BACKTEST_BARS", 1_440),
             data_source=getenv("DATA_SOURCE", "demo").strip().lower(),
             data_dir=Path(getenv("DATA_DIR", "data")),
             timezone=getenv("APP_TIMEZONE", "Europe/Berlin").strip(),
-            poll_seconds=_as_int("POLL_SECONDS", 60),
-            session_close_hour=_as_int("SESSION_CLOSE_HOUR", 23),
-            session_close_minute=_as_int("SESSION_CLOSE_MINUTE", 45),
-            cooldown_minutes=_as_int("COOLDOWN_MINUTES", 45),
+            poll_seconds=_as_int("POLL_SECONDS", 300),
             fusion_read_api_key=getenv("FUSION_READ_API_KEY", "").strip(),
             fusion_base_url=getenv(
                 "FUSION_BASE_URL", "https://api.fusion.bitpanda.com"
@@ -136,34 +103,18 @@ class Settings:
             )
         if self.starting_capital <= 0:
             raise ValueError("I require STARTING_CAPITAL to be greater than 0.")
-        if not 0 < self.risk_per_trade <= 0.01:
-            raise ValueError("I require RISK_PER_TRADE to be greater than 0 and no more than 0.01.")
-        if not self.risk_per_trade <= self.max_aggregate_risk <= 0.02:
+        if not 0 <= self.fee_rate <= 0.01:
+            raise ValueError("I require FEE_RATE to be between 0 and 0.01.")
+        if not 0 <= self.slippage_rate <= 0.01:
+            raise ValueError("I require SLIPPAGE_RATE to be between 0 and 0.01.")
+        if not 2 <= self.exit_window < self.entry_window <= 250:
             raise ValueError(
-                "I require MAX_AGGREGATE_RISK to be between the per-trade "
-                "risk and 0.02."
+                "I require 2 <= EXIT_WINDOW < ENTRY_WINDOW <= 250."
             )
-        if not self.max_aggregate_risk <= self.max_daily_loss <= 0.02:
-            raise ValueError("I require MAX_DAILY_LOSS to be between aggregate risk and 0.02.")
-        if not 0.02 <= self.hard_drawdown <= 0.25:
-            raise ValueError("I require HARD_DRAWDOWN to be between 0.02 and 0.25.")
-        if not 1 <= self.max_open_positions <= 3:
-            raise ValueError("I require MAX_OPEN_POSITIONS to be between 1 and 3.")
-        if not 1 <= self.max_trades_per_day <= 6:
-            raise ValueError("I require MAX_TRADES_PER_DAY to be between 1 and 6.")
-        if not 2 <= self.fast_window < self.slow_window:
-            raise ValueError("I require FAST_WINDOW to be smaller than SLOW_WINDOW.")
-        if not 2 <= self.trend_fast_window < self.trend_slow_window:
-            raise ValueError("I require TREND_FAST_WINDOW to be smaller than TREND_SLOW_WINDOW.")
-        if not 2 <= self.adx_window <= 100:
-            raise ValueError("I require ADX_WINDOW to be between 2 and 100.")
-        if not 0 <= self.adx_threshold <= 60:
-            raise ValueError("I require ADX_THRESHOLD to be between 0 and 60.")
-        if (
-            self.candle_interval not in ALLOWED_INTERVALS
-            or self.trend_interval not in ALLOWED_INTERVALS
-        ):
-            raise ValueError("I received an unsupported candle interval.")
+        if not 2 <= self.atr_window <= 100:
+            raise ValueError("I require ATR_WINDOW to be between 2 and 100.")
+        if self.candle_interval not in ALLOWED_INTERVALS:
+            raise ValueError("I require CANDLE_INTERVAL to be 4h or 1d.")
         if self.data_source not in {"fusion", "demo"}:
             raise ValueError("I require DATA_SOURCE to be either fusion or demo.")
         if self.data_source == "fusion" and not self.fusion_read_api_key:
@@ -171,20 +122,24 @@ class Settings:
                 "I require FUSION_READ_API_KEY for Fusion data and accept a "
                 "Bitpanda key with Read permission only."
             )
-        if not 60 <= self.history_bars <= 1_000 or not 100 <= self.backtest_bars <= 5_000:
-            raise ValueError("I received HISTORY_BARS or BACKTEST_BARS outside the safety limits.")
-        if not 30 <= self.poll_seconds <= 900:
-            raise ValueError("I require POLL_SECONDS to be between 30 and 900.")
-        if (
-            not 0 <= self.session_close_hour <= 23
-            or not 0 <= self.session_close_minute <= 59
-        ):
-            raise ValueError("I received an invalid daily session close time.")
+        minimum_history = self.entry_window + 2
+        if not minimum_history <= self.history_bars <= 1_440:
+            raise ValueError(
+                f"I require HISTORY_BARS between {minimum_history} and 1440."
+            )
+        if not 100 <= self.backtest_bars <= 1_440:
+            raise ValueError("I require BACKTEST_BARS between 100 and 1440.")
+        if not 30 <= self.poll_seconds <= 3_600:
+            raise ValueError("I require POLL_SECONDS to be between 30 and 3600.")
         if (
             not 1 <= len(self.pairs) <= 10
             or any(not PAIR_PATTERN.match(pair) for pair in self.pairs)
         ):
             raise ValueError("I require PAIRS to contain 1 to 10 unique EUR pairs.")
+        if not 1 <= self.max_open_positions <= len(self.pairs):
+            raise ValueError(
+                "I require MAX_OPEN_POSITIONS between 1 and the number of PAIRS."
+            )
 
     @property
     def database_path(self) -> Path:
@@ -196,11 +151,6 @@ class Settings:
         values["data_dir"] = str(self.data_dir)
         values["pairs"] = list(self.pairs)
         values["fusion_key_configured"] = bool(self.fusion_read_api_key)
-        values["risk_amount"] = round(self.starting_capital * self.risk_per_trade, 2)
-        values["aggregate_risk_amount"] = round(
-            self.starting_capital * self.max_aggregate_risk, 2
-        )
-        values["daily_loss_amount"] = round(
-            self.starting_capital * self.max_daily_loss, 2
-        )
+        values["position_share"] = round(1 / len(self.pairs), 4)
+        values["round_trip_cost"] = round(2 * (self.fee_rate + self.slippage_rate), 5)
         return values

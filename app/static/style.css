@@ -82,7 +82,9 @@ input:focus { border-color: rgba(102, 167, 255, .65); box-shadow: 0 0 0 3px rgba
 .section-heading.compact { margin-bottom: 14px; }
 .muted { color: var(--muted); }
 .portfolio-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.market-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.portfolio-grid.single { grid-template-columns: 1fr; }
+.portfolio-grid.single .portfolio-details { grid-template-columns: repeat(4, 1fr); }
+.market-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .market-card { border: 1px solid var(--line); background: linear-gradient(160deg, rgba(25, 32, 43, .96), rgba(13, 17, 24, .96)); border-radius: 17px; padding: 17px; min-width: 0; }
 .market-card > div { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .market-card > div span { font-size: .69rem; font-weight: 750; }
@@ -113,7 +115,7 @@ input:focus { border-color: rgba(102, 167, 255, .65); box-shadow: 0 0 0 3px rgba
 .legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .75rem; }
 .legend i { width: 9px; height: 9px; border-radius: 50%; }
 .empty-state { min-height: 290px; display: grid; place-items: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 16px; }
-.backtest-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+.backtest-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; }
 .backtest-card { padding: 19px; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 16px; }
 .backtest-card > span { color: var(--muted); font-size: .78rem; }
 .backtest-card > strong { display: block; font-size: 1.55rem; margin: 6px 0 14px; }
@@ -163,6 +165,7 @@ th, td { padding: 11px 9px; border-bottom: 1px solid var(--line); }
 }
 
 @media (max-width: 620px) {
+  .portfolio-grid.single .portfolio-details { grid-template-columns: 1fr 1fr; }
   .topbar, main { padding-left: 18px; padding-right: 18px; }
   .topbar { padding-top: 18px; }
   .brand > span:last-child { display: none; }
