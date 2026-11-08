@@ -61,6 +61,9 @@ class Settings:
     data_dir: Path = Path("data")
     timezone: str = "Europe/Berlin"
     poll_seconds: int = 300
+    tax_rate: float = 0.30
+    tax_free_limit: float = 1_000.0
+    tax_holding_days: int = 365
     fusion_read_api_key: str = ""
     fusion_base_url: str = "https://api.fusion.bitpanda.com"
 
@@ -85,6 +88,8 @@ class Settings:
             data_dir=Path(getenv("DATA_DIR", "data")),
             timezone=getenv("APP_TIMEZONE", "Europe/Berlin").strip(),
             poll_seconds=_as_int("POLL_SECONDS", 300),
+            tax_rate=_as_float("TAX_RATE", 0.30),
+            tax_free_limit=_as_float("TAX_FREE_LIMIT", 1_000.0),
             fusion_read_api_key=getenv("FUSION_READ_API_KEY", "").strip(),
             fusion_base_url=getenv(
                 "FUSION_BASE_URL", "https://api.fusion.bitpanda.com"
@@ -129,6 +134,10 @@ class Settings:
             )
         if not 100 <= self.backtest_bars <= 1_440:
             raise ValueError("I require BACKTEST_BARS between 100 and 1440.")
+        if not 0 <= self.tax_rate <= 0.5:
+            raise ValueError("I require TAX_RATE to be between 0 and 0.5.")
+        if not 0 <= self.tax_free_limit <= 100_000:
+            raise ValueError("I require TAX_FREE_LIMIT to be between 0 and 100000.")
         if not 30 <= self.poll_seconds <= 3_600:
             raise ValueError("I require POLL_SECONDS to be between 30 and 3600.")
         if (

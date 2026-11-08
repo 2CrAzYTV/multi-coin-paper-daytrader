@@ -98,8 +98,8 @@
         <div class="section-heading compact"><div><p class="section-kicker" data-i18n="exposure">Exposure</p><h2 data-i18n="openPositionsTitle">My open paper positions</h2></div></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th data-i18n="pair">Pair</th><th data-i18n="entryPrice">Entry</th><th data-i18n="lastPrice">Last</th><th data-i18n="notional">Value</th><th data-i18n="exitBelow">Sell below</th><th data-i18n="openPnl">Open P&amp;L</th><th data-i18n="since">Since</th></tr></thead>
-            <tbody id="positionRows"><tr><td colspan="7" class="muted" data-i18n="noOpenPosition">I have no open position.</td></tr></tbody>
+            <thead><tr><th data-i18n="pair">Pair</th><th data-i18n="entryPrice">Entry</th><th data-i18n="lastPrice">Last</th><th data-i18n="notional">Value</th><th data-i18n="exitBelow">Sell below</th><th data-i18n="openPnl">Open P&amp;L</th><th data-i18n="since">Since</th><th data-i18n="taxFreeFrom">Tax-free from</th></tr></thead>
+            <tbody id="positionRows"><tr><td colspan="8" class="muted" data-i18n="noOpenPosition">I have no open position.</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -121,7 +121,7 @@
         <div id="backtestGrid" class="backtest-grid"></div>
         <p class="disclaimer" data-i18n="backtestDisclaimer">
           I do not treat a backtest as a return promise. Four years contain only a few dozen trades,
-          and future market conditions can differ substantially.
+          and future market conditions can differ substantially. The tax model is simplified and not tax advice.
         </p>
       </section>
 
@@ -142,6 +142,7 @@
             <li data-i18n="ruleSpot">Spot only: no short selling, no leverage, never more than the cash I hold</li>
             <li data-i18n="ruleFees">Fees on every order and prices from the real order book</li>
             <li data-i18n="ruleMinOrder">Exchange minimum order sizes and size increments</li>
+            <li id="ruleTax">German tax on sales within 1 year</li>
             <li><span data-i18n="allowAtMost">I hold at most</span> <strong id="maxPositions">–</strong> <span data-i18n="simultaneousPositions">positions at the same time</span></li>
             <li data-i18n="noOrderEndpoints">I include no order, account, or transfer endpoint</li>
           </ul>

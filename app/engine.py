@@ -4,6 +4,7 @@ import math
 import threading
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -13,6 +14,7 @@ from .market_data import MarketData, MarketDataError
 from .models import STRATEGY, Fill, PairConstraint, SignalSnapshot
 from .risk import drawdown
 from .strategies import signal_snapshot, target_notional
+from .tax import TaxResult, is_taxable, settle_year
 
 
 def round_units(units: float, increment: float) -> float:
@@ -59,11 +61,51 @@ class PaperEngine:
             float(position["units"]) * float(position["entry_price"]) for position in positions
         )
 
+    # -- taxes --------------------------------------------------------------
+
+    def _local_year(self, iso_value: str) -> int:
+        return datetime.fromisoformat(iso_value).astimezone(ZoneInfo(self.settings.timezone)).year
+
+    def _year_result(self, portfolio: dict[str, Any], year: int) -> TaxResult:
+        pnls = [
+            float(trade["pnl"])
+            for trade in self.repository.closed_trades(portfolio["strategy_id"])
+            if trade["taxable"] and self._local_year(trade["closed_at"]) == year
+        ]
+        return settle_year(
+            pnls,
+            loss_carryforward=float(portfolio.get("loss_carryforward") or 0.0),
+            rate=self.settings.tax_rate,
+            allowance=self.settings.tax_free_limit,
+        )
+
+    def _settle_taxes(self, portfolio: dict[str, Any], now: datetime) -> None:
+        """Pay the tax of every finished calendar year (once, at the year change)."""
+        year = now.astimezone(ZoneInfo(self.settings.timezone)).year
+        if portfolio.get("tax_year") is None:
+            portfolio["tax_year"] = year
+            return
+        while int(portfolio["tax_year"]) < year:
+            settled_year = int(portfolio["tax_year"])
+            result = self._year_result(portfolio, settled_year)
+            portfolio["realized_balance"] = float(portfolio["realized_balance"]) - result.tax
+            portfolio["tax_paid"] = float(portfolio.get("tax_paid") or 0.0) + result.tax
+            portfolio["loss_carryforward"] = result.loss_carryforward
+            portfolio["tax_year"] = settled_year + 1
+            self.repository.add_event(
+                "info",
+                STRATEGY.strategy_id,
+                f"Tax {settled_year}: {result.tax:.2f} EUR on a taxable result of "
+                f"{result.net_taxable:.2f} EUR (loss carryforward {result.loss_carryforward:.2f} EUR).",
+            )
+
     def serialize_portfolios(self) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
         for portfolio in self.repository.list_portfolios():
             positions = self.repository.list_positions(portfolio["strategy_id"])
             equity = self.equity(portfolio, positions)
+            year = int(portfolio.get("tax_year") or datetime.now(UTC).year)
+            estimate = self._year_result(portfolio, year)
             exposure = sum(float(p["units"]) * float(p["last_price"]) for p in positions)
             start = float(portfolio["starting_capital"])
             result.append(
@@ -81,6 +123,11 @@ class PaperEngine:
                     "drawdown_pct": round(
                         drawdown(max(float(portfolio["peak_equity"]), equity), equity) * 100, 2
                     ),
+                    "tax_year": year,
+                    "taxable_result_year": round(estimate.net_taxable, 2),
+                    "tax_estimate_year": estimate.tax,
+                    "tax_free_limit": self.settings.tax_free_limit,
+                    "equity_after_tax": round(equity - estimate.tax, 2),
                 }
             )
         return result
@@ -97,6 +144,10 @@ class PaperEngine:
                     "notional": round(units * last, 2),
                     "unrealized_pnl": round(units * (last - entry), 2),
                     "unrealized_pct": round((last / entry - 1) * 100, 2) if entry > 0 else 0.0,
+                    "tax_free_from": (
+                        datetime.fromisoformat(position["opened_at"])
+                        + timedelta(days=self.settings.tax_holding_days + 1)
+                    ).isoformat(timespec="seconds"),
                 }
             )
         return result
@@ -210,6 +261,7 @@ class PaperEngine:
         now: datetime,
     ) -> list[str]:
         portfolio = self.repository.get_portfolio(STRATEGY.strategy_id)
+        self._settle_taxes(portfolio, now)
         events: list[str] = []
         prices = {pair: snapshot.price for pair, snapshot in snapshots.items()}
 
@@ -339,6 +391,7 @@ class PaperEngine:
         trade = self.repository.get_trade(int(position["open_trade_id"]))
         net = gross - float(trade["entry_fee"]) - fee
         cost_basis = max(units * float(position["entry_price"]), 1e-12)
+        holding_days = (now - datetime.fromisoformat(position["opened_at"])).total_seconds() / 86_400
         self.repository.close_trade(
             trade_id=int(position["open_trade_id"]),
             closed_at=now.isoformat(timespec="seconds"),
@@ -347,6 +400,8 @@ class PaperEngine:
             fill_source=fill.source,
             pnl=net,
             pnl_pct=net / cost_basis,
+            holding_days=holding_days,
+            taxable=is_taxable(holding_days, self.settings.tax_holding_days),
             reason=reason,
         )
         self.repository.delete_position(position["strategy_id"], position["pair"])

@@ -58,6 +58,9 @@ class Repository:
             realized_balance REAL NOT NULL,
             peak_equity REAL NOT NULL,
             fees_paid REAL NOT NULL DEFAULT 0,
+            tax_year INTEGER,
+            tax_paid REAL NOT NULL DEFAULT 0,
+            loss_carryforward REAL NOT NULL DEFAULT 0,
             last_run_at TEXT,
             updated_at TEXT NOT NULL
         );
@@ -77,6 +80,8 @@ class Repository:
             exit_fill_source TEXT,
             pnl REAL,
             pnl_pct REAL,
+            holding_days REAL,
+            taxable INTEGER,
             reason TEXT,
             status TEXT NOT NULL DEFAULT 'open',
             FOREIGN KEY (strategy_id) REFERENCES tf_portfolios(strategy_id)
@@ -134,6 +139,7 @@ class Repository:
             connection = self._connect()
             try:
                 connection.executescript(schema)
+                self._add_missing_columns(connection)
                 now = utc_now()
                 with connection:
                     for strategy in STRATEGIES:
@@ -155,6 +161,24 @@ class Repository:
                         )
             finally:
                 connection.close()
+
+    # Columns added after v0.3.0; CREATE TABLE IF NOT EXISTS does not add them.
+    _MIGRATIONS = {
+        "tf_portfolios": {
+            "tax_year": "INTEGER",
+            "tax_paid": "REAL NOT NULL DEFAULT 0",
+            "loss_carryforward": "REAL NOT NULL DEFAULT 0",
+        },
+        "tf_trades": {"holding_days": "REAL", "taxable": "INTEGER"},
+    }
+
+    def _add_missing_columns(self, connection: sqlite3.Connection) -> None:
+        for table, columns in self._MIGRATIONS.items():
+            existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+            for name, declaration in columns.items():
+                if name not in existing:
+                    connection.execute(f"ALTER TABLE {table} ADD COLUMN {name} {declaration}")
+        connection.commit()
 
     def reset(self) -> None:
         tables = ("tf_positions", "tf_snapshots", "tf_trades", "tf_markets", "tf_events", "tf_portfolios")
@@ -185,13 +209,16 @@ class Repository:
         self._write(
             """
             UPDATE tf_portfolios SET realized_balance = ?, peak_equity = ?, fees_paid = ?,
-                last_run_at = ?, updated_at = ?
+                tax_year = ?, tax_paid = ?, loss_carryforward = ?, last_run_at = ?, updated_at = ?
             WHERE strategy_id = ?
             """,
             (
                 portfolio["realized_balance"],
                 portfolio["peak_equity"],
                 portfolio["fees_paid"],
+                portfolio.get("tax_year"),
+                portfolio.get("tax_paid", 0.0),
+                portfolio.get("loss_carryforward", 0.0),
                 portfolio.get("last_run_at"),
                 utc_now(),
                 portfolio["strategy_id"],
@@ -279,15 +306,26 @@ class Repository:
         fill_source: str,
         pnl: float,
         pnl_pct: float,
+        holding_days: float,
+        taxable: bool,
         reason: str,
     ) -> None:
         self._write(
             """
             UPDATE tf_trades SET closed_at = ?, exit_price = ?, exit_fee = ?, exit_fill_source = ?,
-                pnl = ?, pnl_pct = ?, reason = ?, status = 'closed'
+                pnl = ?, pnl_pct = ?, holding_days = ?, taxable = ?, reason = ?, status = 'closed'
             WHERE id = ?
             """,
-            (closed_at, exit_price, exit_fee, fill_source, pnl, pnl_pct, reason, trade_id),
+            (
+                closed_at, exit_price, exit_fee, fill_source, pnl, pnl_pct,
+                holding_days, int(taxable), reason, trade_id,
+            ),
+        )
+
+    def closed_trades(self, strategy_id: str) -> list[dict[str, Any]]:
+        return self._query(
+            "SELECT * FROM tf_trades WHERE strategy_id = ? AND status = 'closed' ORDER BY id",
+            (strategy_id,),
         )
 
     def recent_trades(self, limit: int = 100) -> list[dict[str, Any]]:

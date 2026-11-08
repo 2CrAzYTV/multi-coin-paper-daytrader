@@ -23,6 +23,8 @@ services:
       APP_LANGUAGE: "${APP_LANGUAGE:-en}"
       APP_TIMEZONE: "${APP_TIMEZONE:-Europe/Berlin}"
       POLL_SECONDS: "${POLL_SECONDS:-300}"
+      TAX_RATE: "${TAX_RATE:-0.30}"
+      TAX_FREE_LIMIT: "${TAX_FREE_LIMIT:-1000}"
       DATA_DIR: /data
       TZ: "${TZ:-Europe/Berlin}"
     ports:

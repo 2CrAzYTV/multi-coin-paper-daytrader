@@ -58,7 +58,7 @@ const translations = {
     chartEmpty: "I start with a paper scan or backtest.",
     historicalSimulation: "Historical simulation",
     multiCoinBacktest: "My backtest with real costs",
-    backtestDisclaimer: "I do not treat a backtest as a return promise. Four years contain only a few dozen trades, and future market conditions can differ substantially.",
+    backtestDisclaimer: "I do not treat a backtest as a return promise. Four years contain only a few dozen trades, and future market conditions can differ substantially. The tax model is simplified and not tax advice.",
     journal: "Journal",
     latestTrades: "My latest trades",
     result: "Result",
@@ -101,6 +101,16 @@ const translations = {
     closedTrades: "Closed trades",
     winRate: "Win rate",
     lastRun: "Last run",
+    taxYear: "Tax {year} (estimate)",
+    afterTax: "After tax",
+    taxFreeFrom: "Tax-free from",
+    taxable: "taxable",
+    taxFree: "tax-free",
+    heldDays: "{days} days",
+    preTax: "Before tax",
+    taxesPaid: "Taxes paid",
+    cagrAfterTax: "Per year after tax",
+    ruleTax: "German tax: sales within 1 year at {rate}, Freigrenze {limit} per year, loss carryforward; after 1 year tax-free",
     updated: "Updated {time}",
     open: "Open",
     closed: "Closed",
@@ -174,7 +184,7 @@ const translations = {
     chartEmpty: "Ich beginne mit einem Paper-Scan oder Backtest.",
     historicalSimulation: "Historische Simulation",
     multiCoinBacktest: "Mein Backtest mit echten Kosten",
-    backtestDisclaimer: "Ich behandle einen Backtest nicht als Renditeversprechen. Vier Jahre enthalten nur einige Dutzend Trades, und künftige Marktbedingungen können erheblich abweichen.",
+    backtestDisclaimer: "Ich behandle einen Backtest nicht als Renditeversprechen. Vier Jahre enthalten nur einige Dutzend Trades, und künftige Marktbedingungen können erheblich abweichen. Das Steuermodell ist vereinfacht und keine Steuerberatung.",
     journal: "Journal",
     latestTrades: "Meine neuesten Trades",
     result: "Ergebnis",
@@ -217,6 +227,16 @@ const translations = {
     closedTrades: "Abgeschlossene Trades",
     winRate: "Trefferquote",
     lastRun: "Letzter Lauf",
+    taxYear: "Steuer {year} (geschätzt)",
+    afterTax: "Nach Steuern",
+    taxFreeFrom: "Steuerfrei ab",
+    taxable: "steuerpflichtig",
+    taxFree: "steuerfrei",
+    heldDays: "{days} Tage",
+    preTax: "Vor Steuern",
+    taxesPaid: "Gezahlte Steuern",
+    cagrAfterTax: "Pro Jahr nach Steuern",
+    ruleTax: "Steuer: Verkauf innerhalb 1 Jahr mit {rate}, Freigrenze {limit} pro Jahr, Verlustvortrag; nach 1 Jahr steuerfrei",
     updated: "Aktualisiert {time}",
     open: "Offen",
     closed: "Geschlossen",
@@ -400,6 +420,8 @@ function translateRuntimeText(value) {
   if (match) return "Paper-Verkauf " + match[1] + ": " + match[2] + " EUR nach Gebühren (" + (match[3] === "order_book" ? "Orderbuch" : "Kerze") + ").";
   match = text.match(/^(.+) signal skipped: not enough cash for the minimum order\.$/);
   if (match) return match[1] + ": Signal übersprungen, Guthaben reicht nicht für die Mindestorder.";
+  match = text.match(/^Tax (\d{4}): ([\d.-]+) EUR on a taxable result of ([\d.-]+) EUR \(loss carryforward ([\d.-]+) EUR\)\.$/);
+  if (match) return "Steuer " + match[1] + ": " + match[2] + " EUR auf ein steuerpflichtiges Ergebnis von " + match[3] + " EUR (Verlustvortrag " + match[4] + " EUR).";
   match = text.match(/^(.+) is skipped because it is not active\.$/);
   if (match) return match[1] + " wird übersprungen, weil das Paar nicht aktiv ist.";
   return text;
@@ -430,6 +452,9 @@ function renderConfig() {
   document.getElementById("pairChips").innerHTML = c.pairs.map((pair) => "<span>" + escapeHtml(pair) + "</span>").join("");
   document.getElementById("sourceHint").textContent = c.data_source === "demo" ? t("sourceDemo") : t("sourceFusion");
   document.getElementById("resetCopy").textContent = t("resetCopy", { capital: euro.format(c.starting_capital) });
+  document.getElementById("ruleTax").textContent = t("ruleTax", {
+    rate: percent.format(c.tax_rate), limit: euro.format(c.tax_free_limit),
+  });
 }
 
 function renderMarkets() {
@@ -474,6 +499,8 @@ function renderPortfolios() {
         "<div><small>" + escapeHtml(t("closedTrades")) + "</small><strong>" + item.closed_trades + "</strong></div>" +
         "<div><small>" + escapeHtml(t("winRate")) + "</small><strong>" + (item.win_rate_pct == null ? "–" : escapeHtml(number.format(item.win_rate_pct)) + " %") + "</strong></div>" +
         "<div><small>" + escapeHtml(t("openPositions")) + "</small><strong>" + item.position_count + "/" + state.config.max_open_positions + "</strong></div>" +
+        "<div><small>" + escapeHtml(t("taxYear", { year: item.tax_year })) + "</small><strong>" + escapeHtml(euro.format(item.tax_estimate_year)) + "</strong></div>" +
+        "<div><small>" + escapeHtml(t("afterTax")) + "</small><strong>" + escapeHtml(euro.format(item.equity_after_tax)) + "</strong></div>" +
         "<div><small>" + escapeHtml(t("lastRun")) + "</small><strong>" + escapeHtml(formatTime(item.last_run_at)) + "</strong></div>" +
       "</div></article>";
   }).join("");
@@ -494,8 +521,9 @@ function renderPositions() {
       "</td><td>" + escapeHtml(euro.format(item.notional)) +
       "</td><td>" + escapeHtml(formatMarketPrice(item.exit_level)) +
       "</td><td class=\"" + pnlClass + "\">" + escapeHtml(signedEuro(item.unrealized_pnl)) + " · " + escapeHtml(number.format(item.unrealized_pct)) + " %" +
-      "</td><td>" + escapeHtml(formatDate(item.opened_at)) + "</td></tr>";
-  }).join("") : "<tr><td colspan=\"7\" class=\"muted\">" + escapeHtml(t("noOpenPosition")) + "</td></tr>";
+      "</td><td>" + escapeHtml(formatDate(item.opened_at)) +
+      "</td><td>" + escapeHtml(formatDate(item.tax_free_from)) + "</td></tr>";
+  }).join("") : "<tr><td colspan=\"8\" class=\"muted\">" + escapeHtml(t("noOpenPosition")) + "</td></tr>";
 }
 
 function renderTrades() {
@@ -503,11 +531,14 @@ function renderTrades() {
   const rows = state.status.trades || [];
   document.getElementById("tradeRows").innerHTML = rows.length ? rows.slice(0, 16).map((trade) => {
     const pnl = trade.pnl == null ? "–" : signedEuro(trade.pnl) + " · " + number.format(trade.pnl_pct * 100) + " %";
+    const taxNote = trade.pnl == null || trade.holding_days == null ? "" :
+      "<br /><small class=\"muted\">" + escapeHtml(t("heldDays", { days: Math.round(trade.holding_days) })) + " · " +
+      escapeHtml(trade.taxable ? t("taxable") : t("taxFree")) + "</small>";
     const pnlClass = trade.pnl == null ? "" : trade.pnl >= 0 ? "positive" : "negative";
     return "<tr><td>" + escapeHtml(trade.pair) +
       "</td><td>" + escapeHtml(formatMarketPrice(trade.entry_price)) + "<br /><small class=\"muted\">" + escapeHtml(formatDate(trade.opened_at)) + "</small>" +
       "</td><td>" + (trade.exit_price == null ? "–" : escapeHtml(formatMarketPrice(trade.exit_price)) + "<br /><small class=\"muted\">" + escapeHtml(formatDate(trade.closed_at)) + "</small>") +
-      "</td><td class=\"" + pnlClass + "\">" + escapeHtml(pnl) +
+      "</td><td class=\"" + pnlClass + "\">" + escapeHtml(pnl) + taxNote +
       "</td><td>" + escapeHtml(tradeStatus(trade.status)) + "</td></tr>";
   }).join("") : "<tr><td colspan=\"5\" class=\"muted\">" + escapeHtml(t("noTrades")) + "</td></tr>";
 }
@@ -544,7 +575,9 @@ function renderBacktest() {
       "<span>" + escapeHtml(backtestLabel(item)) + "</span><strong>" + escapeHtml(euro.format(item.final_equity)) + "</strong>" +
       "<div class=\"mini-stats\">" +
         "<div><span>" + escapeHtml(t("totalReturn")) + "</span><b class=\"" + returnClass + "\">" + escapeHtml(number.format(item.total_return_pct)) + " %</b></div>" +
-        "<div><span>" + escapeHtml(t("cagr")) + "</span><b class=\"" + returnClass + "\">" + escapeHtml(number.format(item.cagr_pct)) + " %</b></div>" +
+        "<div><span>" + escapeHtml(t("cagrAfterTax")) + "</span><b class=\"" + returnClass + "\">" + escapeHtml(number.format(item.cagr_pct)) + " %</b></div>" +
+        "<div><span>" + escapeHtml(t("preTax")) + "</span><b>" + escapeHtml(euro.format(item.pre_tax_final_equity)) + "</b></div>" +
+        "<div><span>" + escapeHtml(t("taxesPaid")) + "</span><b>" + escapeHtml(euro.format(item.taxes_paid)) + "</b></div>" +
         "<div><span>" + escapeHtml(t("maxDrawdown")) + "</span><b class=\"negative\">" + escapeHtml(number.format(item.max_drawdown_pct)) + " %</b></div>" +
         "<div><span>" + escapeHtml(t("trades")) + "</span><b>" + (item.trades ?? "–") + "</b></div>" +
         "<div><span>" + escapeHtml(t("winRate")) + "</span><b>" + (item.win_rate_pct == null ? "–" : escapeHtml(number.format(item.win_rate_pct)) + " %") + "</b></div>" +

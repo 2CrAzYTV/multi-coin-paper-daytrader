@@ -11,6 +11,7 @@ from .market_data import MarketData, MarketDataError
 from .models import STRATEGY
 from .risk import drawdown
 from .strategies import add_channels, target_notional
+from .tax import is_taxable, settle_year
 
 BARS_PER_YEAR = {"1d": 365.0, "4h": 365.0 * 6}
 
@@ -45,7 +46,10 @@ class Backtester:
             raise MarketDataError("I found no pair available for the backtest.")
 
         timestamps = sorted(set().union(*(set(frame.index) for frame in frames.values())))
-        strategy = self._simulate(frames, constraints, timestamps)
+        strategy = self._simulate(frames, constraints, timestamps, apply_tax=True)
+        pre_tax = self._simulate(frames, constraints, timestamps, apply_tax=False)
+        strategy["pre_tax_final_equity"] = pre_tax["final_equity"]
+        strategy["pre_tax_cagr_pct"] = pre_tax["cagr_pct"]
         benchmark = self._benchmark(frames, timestamps)
         return {
             "status": "ok",
@@ -58,6 +62,8 @@ class Backtester:
             "data_source": self.settings.data_source,
             "fee_rate": self.settings.fee_rate,
             "slippage_rate": self.settings.slippage_rate,
+            "tax_rate": self.settings.tax_rate,
+            "tax_free_limit": self.settings.tax_free_limit,
             "strategies": [strategy],
             "benchmark": benchmark,
         }
@@ -65,11 +71,15 @@ class Backtester:
     def _years(self, timestamps: list[pd.Timestamp]) -> float:
         return max(len(timestamps) / BARS_PER_YEAR[self.settings.candle_interval], 1e-9)
 
-    def _simulate(self, frames, constraints, timestamps) -> dict[str, Any]:
+    def _simulate(self, frames, constraints, timestamps, *, apply_tax: bool) -> dict[str, Any]:
         s = self.settings
         balance = s.starting_capital  # realized balance (cash + cost basis)
         peak = s.starting_capital
         fees = 0.0
+        taxes = 0.0
+        carryforward = 0.0
+        tax_year = pd.Timestamp(timestamps[0]).tz_convert(s.timezone).year
+        year_pnls: list[float] = []
         positions: dict[str, dict[str, float]] = {}
         prices: dict[str, float] = {}
         trades = wins = max_positions = invested_steps = 0
@@ -84,7 +94,7 @@ class Backtester:
         def cash() -> float:
             return balance - sum(p["units"] * p["entry"] for p in positions.values())
 
-        def sell(pair: str, close: float) -> None:
+        def sell(pair: str, close: float, timestamp: pd.Timestamp) -> None:
             nonlocal balance, fees, trades, wins
             position = positions.pop(pair)
             price = close * (1 - s.slippage_rate)
@@ -93,16 +103,35 @@ class Backtester:
             balance += gross - fee
             fees += fee
             trades += 1
-            wins += int(gross - fee - position["entry_fee"] > 0)
+            net = gross - fee - position["entry_fee"]
+            wins += int(net > 0)
+            held = (timestamp - position["opened"]).total_seconds() / 86_400
+            if is_taxable(held, s.tax_holding_days):
+                year_pnls.append(net)
+
+        def settle() -> None:
+            nonlocal balance, taxes, carryforward
+            result = settle_year(
+                year_pnls, loss_carryforward=carryforward, rate=s.tax_rate, allowance=s.tax_free_limit
+            )
+            year_pnls.clear()
+            carryforward = result.loss_carryforward
+            if apply_tax:
+                balance -= result.tax
+                taxes += result.tax
 
         for timestamp in timestamps:
+            year = pd.Timestamp(timestamp).tz_convert(s.timezone).year
+            if year != tax_year:
+                settle()
+                tax_year = year
             bars = {pair: frame.loc[timestamp] for pair, frame in frames.items() if timestamp in frame.index}
             for pair, bar in bars.items():
                 prices[pair] = float(bar["Close"])
 
             for pair in list(positions):
                 if pair in bars and int(bars[pair]["SIGNAL"]) < 0:
-                    sell(pair, float(bars[pair]["Close"]))
+                    sell(pair, float(bars[pair]["Close"]), timestamp)
 
             candidates = sorted(
                 (
@@ -134,7 +163,7 @@ class Backtester:
                 fee = units * price * s.fee_rate
                 balance -= fee
                 fees += fee
-                positions[pair] = {"units": units, "entry": price, "entry_fee": fee}
+                positions[pair] = {"units": units, "entry": price, "entry_fee": fee, "opened": timestamp}
 
             max_positions = max(max_positions, len(positions))
             invested_steps += int(bool(positions))
@@ -145,7 +174,8 @@ class Backtester:
                           "drawdown": round(drawdown(peak, value), 6)})
 
         for pair in list(positions):
-            sell(pair, prices[pair])
+            sell(pair, prices[pair], timestamps[-1])
+        settle()
         final = balance
         if curve:
             curve[-1]["equity"] = round(final, 4)
@@ -161,6 +191,7 @@ class Backtester:
             "trades": trades,
             "win_rate_pct": round(wins / trades * 100, 1) if trades else 0.0,
             "fees_paid": round(fees, 2),
+            "taxes_paid": round(taxes, 2),
             "time_invested_pct": round(invested_steps / max(len(timestamps), 1) * 100, 1),
             "max_positions": max_positions,
             "curve": _downsample(curve),
@@ -195,6 +226,14 @@ class Backtester:
             fee = exit_value * s.fee_rate
             final += exit_value - fee
             fees += fee
+        # held for the whole period: tax-free after the holding period
+        held = (pd.Timestamp(timestamps[-1]) - pd.Timestamp(timestamps[0])).total_seconds() / 86_400
+        taxes = 0.0
+        if is_taxable(held, s.tax_holding_days):
+            taxes = settle_year(
+                [final - s.starting_capital], loss_carryforward=0.0, rate=s.tax_rate, allowance=s.tax_free_limit
+            ).tax
+            final -= taxes
         if curve:
             curve[-1]["equity"] = round(final, 4)
         years = self._years(timestamps)
@@ -209,6 +248,8 @@ class Backtester:
             "trades": len(frames),
             "win_rate_pct": None,
             "fees_paid": round(fees, 2),
+            "taxes_paid": round(taxes, 2),
+            "pre_tax_final_equity": round(final + taxes, 2),
             "time_invested_pct": 100.0,
             "max_positions": len(frames),
             "curve": _downsample(curve),
