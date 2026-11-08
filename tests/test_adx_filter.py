@@ -58,7 +58,10 @@ class AdxFilterTests(unittest.TestCase):
         )
         result = Backtester(strict, self.market).run(400)
         self.assertEqual(result["status"], "ok")
+        # The ADX filter gates the EMA signal only; ORB portfolios use their own rules.
         for strategy in result["strategies"]:
+            if strategy["strategy_id"].startswith("orb_"):
+                continue
             self.assertEqual(strategy["trades"], 0)
 
 

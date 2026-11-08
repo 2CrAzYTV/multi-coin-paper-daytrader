@@ -39,9 +39,11 @@ The complete installation, update, backup, rollback, and troubleshooting guide i
 
 The default universe is `BTC-EUR`, `ETH-EUR`, `SOL-EUR`, `XRP-EUR`, and `ADA-EUR`. Each comparison strategy starts with the same €1,000 virtual portfolio:
 
-1. Long only, up to 1× exposure
-2. Long/short, up to 1× exposure
-3. Long/short, up to 2× exposure
+1. EMA crossover · long only, up to 1× exposure
+2. EMA crossover · long/short, up to 1× exposure
+3. EMA crossover · long/short, up to 2× exposure
+4. Opening Range Breakout (ORB) · long only, up to 1× exposure
+5. Opening Range Breakout (ORB) · long/short, up to 1× exposure
 
 The €1,000 is shared across all configured coins inside each strategy; it is not additional capital per coin.
 
@@ -82,6 +84,32 @@ Position sizing uses stop distance and includes assumed fees and slippage. Real 
 - stop moved to break-even after `1R`
 - 45-minute per-pair cooldown after an exit
 - all open positions closed at 23:45 in `Europe/Berlin`
+
+## Opening Range Breakout (ORB)
+
+Crypto trades around the clock, so the "open" is a configurable daily session
+start. The default is 15:30 `Europe/Berlin` (US cash open, when crypto volume
+usually picks up).
+
+- the first `ORB_RANGE_MINUTES` (default 30) after the session start define the range high/low
+- inside the next `ORB_ENTRY_WINDOW_MINUTES` (default 180), the **first** 15-minute
+  candle that closes above the range high is a long signal; the first close below the
+  range low is a short signal (long/short portfolio only) - one attempt per side per day
+- filters: candle volume at least the 20-candle median, range width at most
+  `ORB_MAX_RANGE_ATR × ATR(14)` (default 4), and - with `ORB_TREND_FILTER=true` - the
+  1-hour EMA-20/50 trend must point in the breakout direction
+- stop at the range midpoint (at least `MINIMUM_STOP_PCT`), `2R` target, break-even
+  after `1R`, no EMA exit, closed at the daily session close at the latest
+
+| Variable | Default |
+| --- | ---: |
+| `ORB_SESSION_HOUR` / `ORB_SESSION_MINUTE` | 15 / 30 |
+| `ORB_RANGE_MINUTES` | 30 |
+| `ORB_ENTRY_WINDOW_MINUTES` | 180 |
+| `ORB_MAX_RANGE_ATR` | 4.0 |
+| `ORB_TREND_FILTER` | true |
+
+Both ORB portfolios share the same global risk limits as the EMA portfolios.
 
 The application requests active pairs and skips unavailable markets. Fusion documents the read-only [pair list](https://docs.fusion.bitpanda.com/get-trading-pairs-4295528e0) and [OHLCV candle](https://docs.fusion.bitpanda.com/get-candles-4311313e0) endpoints used by the project.
 

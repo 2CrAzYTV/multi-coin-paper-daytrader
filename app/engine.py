@@ -16,6 +16,7 @@ from .risk import calculate_position_size, daily_limit_breached, drawdown
 from .strategies import (
     add_entry_indicators,
     add_trend_indicators,
+    orb_snapshot,
     should_exit,
     signal_snapshot,
     stop_distance,
@@ -195,6 +196,10 @@ class PaperEngine:
                     "entry": entry,
                     "trend": trend,
                     "snapshot": snapshot,
+                    "snapshots": {
+                        "ema": snapshot,
+                        "orb": orb_snapshot(pair, entry, trend, self.settings),
+                    },
                     "constraint": constraints[pair],
                 }
             except Exception as exc:
@@ -275,7 +280,7 @@ class PaperEngine:
             elif session_closed:
                 exit_price = float(bar["Close"])
                 reason = "Daily position close"
-            elif should_exit(direction, packages[pair]["entry"]):
+            elif spec.signal == "ema" and should_exit(direction, packages[pair]["entry"]):
                 exit_price = float(bar["Close"])
                 reason = "EMA exit"
 
@@ -331,9 +336,9 @@ class PaperEngine:
         if not portfolio["hard_locked"] and not portfolio["daily_locked"] and not session_closed:
             candidates = sorted(
                 (
-                    packages[pair]["snapshot"]
+                    packages[pair]["snapshots"][spec.signal]
                     for pair in new_pairs
-                    if packages[pair]["snapshot"].direction != 0
+                    if packages[pair]["snapshots"][spec.signal].direction != 0
                 ),
                 key=lambda item: item.strength,
                 reverse=True,
@@ -422,12 +427,15 @@ class PaperEngine:
         )
         if risk_budget <= 0 or remaining_notional <= 0:
             return None
-        distance = stop_distance(
-            price=candidate.price,
-            atr=candidate.atr,
-            atr_multiple=self.settings.stop_atr_multiple,
-            minimum_stop_pct=self.settings.minimum_stop_pct,
-        )
+        if candidate.stop_distance is not None:
+            distance = candidate.stop_distance
+        else:
+            distance = stop_distance(
+                price=candidate.price,
+                atr=candidate.atr,
+                atr_multiple=self.settings.stop_atr_multiple,
+                minimum_stop_pct=self.settings.minimum_stop_pct,
+            )
         size = calculate_position_size(
             equity=equity,
             entry_price=candidate.price,

@@ -8,6 +8,7 @@ from pathlib import Path
 
 PAIR_PATTERN = re.compile(r"^[A-Z0-9]{2,12}-EUR$")
 ALLOWED_INTERVALS = {"1m", "5m", "15m", "30m", "1h", "4h", "1d"}
+INTERVAL_MINUTES = {"1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60, "4h": 240, "1d": 1_440}
 
 
 def _as_bool(value: str | None, default: bool) -> bool:
@@ -77,6 +78,12 @@ class Settings:
     session_close_hour: int = 23
     session_close_minute: int = 45
     cooldown_minutes: int = 45
+    orb_session_hour: int = 15
+    orb_session_minute: int = 30
+    orb_range_minutes: int = 30
+    orb_entry_window_minutes: int = 180
+    orb_max_range_atr: float = 4.0
+    orb_trend_filter: bool = True
     fusion_read_api_key: str = ""
     fusion_base_url: str = "https://api.fusion.bitpanda.com"
 
@@ -118,6 +125,12 @@ class Settings:
             session_close_hour=_as_int("SESSION_CLOSE_HOUR", 23),
             session_close_minute=_as_int("SESSION_CLOSE_MINUTE", 45),
             cooldown_minutes=_as_int("COOLDOWN_MINUTES", 45),
+            orb_session_hour=_as_int("ORB_SESSION_HOUR", 15),
+            orb_session_minute=_as_int("ORB_SESSION_MINUTE", 30),
+            orb_range_minutes=_as_int("ORB_RANGE_MINUTES", 30),
+            orb_entry_window_minutes=_as_int("ORB_ENTRY_WINDOW_MINUTES", 180),
+            orb_max_range_atr=_as_float("ORB_MAX_RANGE_ATR", 4.0),
+            orb_trend_filter=_as_bool(getenv("ORB_TREND_FILTER"), True),
             fusion_read_api_key=getenv("FUSION_READ_API_KEY", "").strip(),
             fusion_base_url=getenv(
                 "FUSION_BASE_URL", "https://api.fusion.bitpanda.com"
@@ -180,6 +193,31 @@ class Settings:
             or not 0 <= self.session_close_minute <= 59
         ):
             raise ValueError("I received an invalid daily session close time.")
+        if (
+            not 0 <= self.orb_session_hour <= 23
+            or not 0 <= self.orb_session_minute <= 59
+        ):
+            raise ValueError("I received an invalid ORB session start time.")
+        candle_minutes = INTERVAL_MINUTES[self.candle_interval]
+        if (
+            not 15 <= self.orb_range_minutes <= 240
+            or self.orb_range_minutes % candle_minutes
+        ):
+            raise ValueError(
+                "I require ORB_RANGE_MINUTES to be between 15 and 240 and a "
+                "multiple of CANDLE_INTERVAL."
+            )
+        if not 15 <= self.orb_entry_window_minutes <= 720:
+            raise ValueError("I require ORB_ENTRY_WINDOW_MINUTES to be between 15 and 720.")
+        if not 0.5 <= self.orb_max_range_atr <= 20:
+            raise ValueError("I require ORB_MAX_RANGE_ATR to be between 0.5 and 20.")
+        range_end = (
+            self.orb_session_hour * 60 + self.orb_session_minute + self.orb_range_minutes
+        )
+        if range_end >= self.session_close_hour * 60 + self.session_close_minute:
+            raise ValueError(
+                "I require the ORB opening range to end before the daily session close."
+            )
         if (
             not 1 <= len(self.pairs) <= 10
             or any(not PAIR_PATTERN.match(pair) for pair in self.pairs)

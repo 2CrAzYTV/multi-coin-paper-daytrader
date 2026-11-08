@@ -360,16 +360,24 @@ function setBusy(button, busy, busyKey) {
 function strategyLabel(strategyId, fallback) {
   const labels = {
     long_only_1x: {
-      en: "Long-only · 1×",
-      de: "Nur Long · 1×",
+      en: "EMA · Long-only · 1×",
+      de: "EMA · Nur Long · 1×",
     },
     long_short_1x: {
-      en: "Long/Short · 1×",
-      de: "Long/Short · 1×",
+      en: "EMA · Long/Short · 1×",
+      de: "EMA · Long/Short · 1×",
     },
     long_short_2x: {
-      en: "Long/Short · max. 2×",
-      de: "Long/Short · max. 2×",
+      en: "EMA · Long/Short · max. 2×",
+      de: "EMA · Long/Short · max. 2×",
+    },
+    orb_long_only_1x: {
+      en: "ORB · Long-only · 1×",
+      de: "ORB · Nur Long · 1×",
+    },
+    orb_long_short_1x: {
+      en: "ORB · Long/Short · 1×",
+      de: "ORB · Long/Short · 1×",
     },
   };
   return labels[strategyId]?.[state.language] || fallback || strategyId;
@@ -408,6 +416,15 @@ function translateRuntimeText(value) {
     "Profit target": "Gewinnziel",
     "Daily position close": "Täglicher Positionsschluss",
     "EMA exit": "EMA-Ausstieg",
+    "ORB long breakout": "ORB-Ausbruch nach oben",
+    "ORB short breakout": "ORB-Ausbruch nach unten",
+    "Building the ORB opening range": "Ich bilde gerade die ORB-Eröffnungsspanne.",
+    "ORB range incomplete": "Die ORB-Spanne ist unvollständig.",
+    "No ORB breakout": "Kein ORB-Ausbruch",
+    "ORB range too wide": "Die ORB-Spanne ist zu breit.",
+    "ORB trend filter": "ORB-Trendfilter",
+    "ORB breakout already used today": "Der ORB-Ausbruch wurde heute schon genutzt.",
+    "Outside the ORB entry window": "Außerhalb des ORB-Einstiegsfensters",
     "Overnight emergency exit": "Notausstieg vor dem Tageswechsel",
   };
   if (exact[text]) return exact[text];

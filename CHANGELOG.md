@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- I added an Opening Range Breakout (ORB) signal with two new paper portfolios
+  (`orb_long_only_1x`, `orb_long_short_1x`). The range is built from the first
+  30 minutes after a configurable session start (default 15:30 Europe/Berlin),
+  the first 15-minute close outside the range within a 3-hour window is the
+  entry, the stop sits at the range midpoint, target 2R. Volume, range-width
+  and optional 1h trend filters. Live engine and backtest share the same
+  vectorised signal code; existing EMA portfolios are unchanged and keep their
+  history (new portfolios are added on start-up).
+
 - I added an ADX trend-strength filter (`ADX_WINDOW`, `ADX_THRESHOLD`, 1h
   timeframe) that gates the EMA crossover signal on genuine trend strength
   instead of just EMA order. Backtested against ~10 days of real Fusion

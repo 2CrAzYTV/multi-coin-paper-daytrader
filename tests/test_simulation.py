@@ -7,6 +7,7 @@ from app.config import Settings
 from app.db import Repository
 from app.engine import PaperEngine
 from app.market_data import MarketData
+from app.models import STRATEGIES
 
 
 class SimulationTests(unittest.TestCase):
@@ -49,7 +50,7 @@ class SimulationTests(unittest.TestCase):
         result = Backtester(self.settings, self.market).run(400)
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["pairs"], sorted(self.settings.pairs))
-        self.assertEqual(len(result["strategies"]), 3)
+        self.assertEqual(len(result["strategies"]), len(STRATEGIES))
         for strategy in result["strategies"]:
             self.assertGreater(strategy["final_equity"], 0)
             self.assertLessEqual(strategy["max_positions"], 2)
@@ -65,7 +66,7 @@ class SimulationTests(unittest.TestCase):
         self.assertEqual(first["status"], "ok")
         self.assertEqual(second["status"], "no_new_candles")
         self.assertEqual(len(repository.list_markets()), 5)
-        self.assertEqual(len(engine.serialize_portfolios()), 3)
+        self.assertEqual(len(engine.serialize_portfolios()), len(STRATEGIES))
 
     def test_every_open_position_has_stop_target_and_global_count_cap(self):
         repository = Repository(self.settings.database_path, 1_000)

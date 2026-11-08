@@ -11,7 +11,12 @@ from .config import Settings
 from .market_data import MarketData, MarketDataError
 from .models import STRATEGIES, PairConstraint, StrategySpec
 from .risk import calculate_position_size, daily_limit_breached, drawdown
-from .strategies import add_entry_indicators, add_trend_indicators, stop_distance
+from .strategies import (
+    add_entry_indicators,
+    add_orb_columns,
+    add_trend_indicators,
+    stop_distance,
+)
 
 
 @dataclass
@@ -115,7 +120,10 @@ class Backtester:
         entry["SIGNAL"] = 0
         entry.loc[long_setup, "SIGNAL"] = 1
         entry.loc[short_setup, "SIGNAL"] = -1
-        return entry
+        trend_up = (entry["TREND_FAST"] > entry["TREND_SLOW"]).where(
+            entry["TREND_FAST"].notna() & entry["TREND_SLOW"].notna()
+        )
+        return add_orb_columns(entry, self.settings, trend_up)
 
     def _run_strategy(
         self,
@@ -170,9 +178,17 @@ class Backtester:
                     exit_price = float(position["target"])
                 elif session_closed:
                     exit_price = float(bar["Close"])
-                elif direction > 0 and float(bar["EMA_FAST"]) < float(bar["EMA_SLOW"]):
+                elif (
+                    spec.signal == "ema"
+                    and direction > 0
+                    and float(bar["EMA_FAST"]) < float(bar["EMA_SLOW"])
+                ):
                     exit_price = float(bar["Close"])
-                elif direction < 0 and float(bar["EMA_FAST"]) > float(bar["EMA_SLOW"]):
+                elif (
+                    spec.signal == "ema"
+                    and direction < 0
+                    and float(bar["EMA_FAST"]) > float(bar["EMA_SLOW"])
+                ):
                     exit_price = float(bar["Close"])
                 if exit_price is not None:
                     won = self._close(account, pair, exit_price)
@@ -209,16 +225,20 @@ class Backtester:
 
             if not account.daily_locked and not account.hard_locked and not session_closed:
                 candidates: list[tuple[float, str, int, pd.Series]] = []
+                signal_column = "ORB_SIGNAL" if spec.signal == "orb" else "SIGNAL"
                 for pair, bar in bars.items():
-                    signal = int(bar["SIGNAL"])
+                    signal = int(bar[signal_column])
                     if not signal or (signal < 0 and not spec.short_allowed):
                         continue
                     atr = float(bar["ATR"])
-                    strength = (
-                        abs(float(bar["EMA_FAST"]) - float(bar["EMA_SLOW"])) / atr
-                        if atr > 0 and math.isfinite(atr)
-                        else 0.0
-                    )
+                    if spec.signal == "orb":
+                        strength = float(bar["ORB_STRENGTH"])
+                    else:
+                        strength = (
+                            abs(float(bar["EMA_FAST"]) - float(bar["EMA_SLOW"])) / atr
+                            if atr > 0 and math.isfinite(atr)
+                            else 0.0
+                        )
                     candidates.append((strength, pair, signal, bar))
                 candidates.sort(reverse=True)
                 for _, pair, direction, bar in candidates:
@@ -297,12 +317,15 @@ class Backtester:
         )
         remaining = min(equity * spec.max_leverage - exposure, constraint.max_order_amount)
         price = float(bar["Close"])
-        distance = stop_distance(
-            price=price,
-            atr=float(bar["ATR"]),
-            atr_multiple=self.settings.stop_atr_multiple,
-            minimum_stop_pct=self.settings.minimum_stop_pct,
-        )
+        if spec.signal == "orb" and math.isfinite(float(bar["ORB_STOP"])):
+            distance = float(bar["ORB_STOP"])
+        else:
+            distance = stop_distance(
+                price=price,
+                atr=float(bar["ATR"]),
+                atr_multiple=self.settings.stop_atr_multiple,
+                minimum_stop_pct=self.settings.minimum_stop_pct,
+            )
         if risk_budget <= 0 or remaining <= 0 or not math.isfinite(distance):
             return
         size = calculate_position_size(

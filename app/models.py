@@ -10,12 +10,15 @@ class StrategySpec:
     short_allowed: bool
     max_leverage: float
     color: str
+    signal: str = "ema"
 
 
 STRATEGIES = (
     StrategySpec("long_only_1x", "Long-only · 1×", False, 1.0, "#59d3a5"),
     StrategySpec("long_short_1x", "Long/Short · 1×", True, 1.0, "#66a7ff"),
     StrategySpec("long_short_2x", "Long/Short · max. 2×", True, 2.0, "#f4b860"),
+    StrategySpec("orb_long_only_1x", "ORB · Long-only · 1×", False, 1.0, "#c792ea", "orb"),
+    StrategySpec("orb_long_short_1x", "ORB · Long/Short · 1×", True, 1.0, "#ff7a90", "orb"),
 )
 
 
@@ -47,3 +50,4 @@ class SignalSnapshot:
     trend: int
     strength: float
     reason: str
+    stop_distance: float | None = None
