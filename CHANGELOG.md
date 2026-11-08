@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### v0.4.0 - German crypto tax model
+
+- I model § 23 EStG for the paper account and the backtest: sales within one
+  year are taxable, after one year tax-free; yearly Freigrenze
+  (`TAX_FREE_LIMIT`, EUR 1,000, whole amount taxed at or above it), loss
+  carryforward, flat `TAX_RATE` (default 30%). The tax of a finished year is
+  deducted at the year change.
+- Dashboard: estimated tax of the current year, equity after tax, holding
+  period and taxable/tax-free per trade, "tax-free from" per position.
+- Backtest: results before and after tax, taxes paid.
+
 ### v0.3.0 - one realistic strategy instead of three intraday variants
 
 - I replaced the three 15-minute EMA portfolios (long-only, long/short, 2x)

@@ -2,7 +2,7 @@
 
 [![CI and container image](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/actions/workflows/container-image.yml/badge.svg)](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/actions/workflows/container-image.yml)
 
-Public beta `v0.3.0` of a **paper-only** crypto trend-following simulator for Unraid and Docker. It simulates one realistic Bitpanda Fusion **spot** account (long only, no leverage, real fees, order-book prices), uses €1,000 virtual starting capital by default and cannot place real-money orders.
+Public beta `v0.4.0` of a **paper-only** crypto trend-following simulator for Unraid and Docker. It simulates one realistic Bitpanda Fusion **spot** account (long only, no leverage, real fees, order-book prices), uses €1,000 virtual starting capital by default and cannot place real-money orders.
 
 > The repository and image keep the historic name `multi-coin-paper-daytrader`. Since v0.3.0 the simulator no longer day-trades - see [Why not intraday](#why-not-intraday).
 
@@ -61,7 +61,20 @@ Rules, evaluated once per closed **daily** candle (classic "Turtle System 2"):
 | Account | one spot account: cash + coins, no margin |
 | Backtest history | up to 1,440 daily candles (~4 years) from Fusion |
 
-Not modelled: taxes (crypto gains held < 1 year are taxable in Germany), exchange outages, and the exact minute of execution after the daily close.
+Not modelled: exchange outages and the exact minute of execution after the daily close.
+
+## German tax model
+
+Crypto sales within one year of the purchase are private sales (§ 23 EStG); after one year they are tax-free. The simulator models this in the live account and in the backtest:
+
+- every closed trade records its holding period and whether it is taxable
+- per calendar year the taxable results are netted; below the **Freigrenze** (`TAX_FREE_LIMIT`, €1,000) the year stays tax-free, at or above it the whole amount is taxed at `TAX_RATE` (default 30%, approximate personal marginal rate incl. solidarity surcharge)
+- net losses are carried forward; the tax of a finished year is deducted from the paper account at the year change
+- the backtest reports results before and after tax; buy-and-hold over more than a year is tax-free
+
+Simplifications: church tax, your other private sales (which share the same Freigrenze) and the real payment date are not modelled. This is a simulation aid, not tax advice.
+
+What it means (4 years of Fusion data, 30% tax): with €100 the yearly gains stay below the Freigrenze and the strategy returns +46.8%/year after tax vs. +37.7% for buy-and-hold; from about €1,000 upwards the tax brings it down to +31.6%/year, **below** tax-free buy-and-hold (+37.7%/year) - but with a much smaller drawdown (39% vs. 70%).
 
 ## Why not intraday
 

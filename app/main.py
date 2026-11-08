@@ -37,7 +37,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Multi-Coin Paper Trader",
-    version="0.3.0",
+    version="0.4.0",
     docs_url="/api/docs",
     redoc_url=None,
     lifespan=lifespan,

@@ -33,9 +33,9 @@ class ReleaseAssetTests(unittest.TestCase):
         package = (ROOT / "app/__init__.py").read_text()
         main = (ROOT / "app/main.py").read_text()
         dockerfile = (ROOT / "Dockerfile").read_text()
-        self.assertIn('__version__ = "0.3.0"', package)
-        self.assertIn('version="0.3.0"', main)
-        self.assertIn('org.opencontainers.image.version="0.3.0"', dockerfile)
+        self.assertIn('__version__ = "0.4.0"', package)
+        self.assertIn('version="0.4.0"', main)
+        self.assertIn('org.opencontainers.image.version="0.4.0"', dockerfile)
 
     def test_unraid_icon_is_high_resolution_transparent_png(self):
         icon = (ROOT / "unraid/multi-coin-paper-daytrader.png").read_bytes()

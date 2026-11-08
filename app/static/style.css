@@ -83,7 +83,7 @@ input:focus { border-color: rgba(102, 167, 255, .65); box-shadow: 0 0 0 3px rgba
 .muted { color: var(--muted); }
 .portfolio-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .portfolio-grid.single { grid-template-columns: 1fr; }
-.portfolio-grid.single .portfolio-details { grid-template-columns: repeat(4, 1fr); }
+.portfolio-grid.single .portfolio-details { grid-template-columns: repeat(5, 1fr); }
 .market-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .market-card { border: 1px solid var(--line); background: linear-gradient(160deg, rgba(25, 32, 43, .96), rgba(13, 17, 24, .96)); border-radius: 17px; padding: 17px; min-width: 0; }
 .market-card > div { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
