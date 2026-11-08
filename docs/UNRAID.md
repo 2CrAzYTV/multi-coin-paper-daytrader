@@ -1,4 +1,4 @@
-# Install and operate Multi-Coin Paper Daytrader on Unraid
+# Install and operate Multi-Coin Paper Trader on Unraid
 
 This guide is written for a new user installing the public beta on an Unraid server. No Git checkout, Docker Compose, GitHub login, or GHCR token is required. A separate `.env` file is not required.
 
@@ -124,37 +124,22 @@ The template exposes these defaults:
 ```dotenv
 PAPER_ONLY=true
 STARTING_CAPITAL=1000
-RISK_PER_TRADE=0.005
-MAX_AGGREGATE_RISK=0.01
-MAX_DAILY_LOSS=0.02
-HARD_DRAWDOWN=0.10
-MAX_OPEN_POSITIONS=2
-MAX_TRADES_PER_DAY=3
-FEE_RATE=0.001
+FEE_RATE=0.0025
 SLIPPAGE_RATE=0.0005
-PAIRS=BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR,ADA-EUR
-CANDLE_INTERVAL=15m
-TREND_INTERVAL=1h
-FAST_WINDOW=9
-SLOW_WINDOW=21
-TREND_FAST_WINDOW=20
-TREND_SLOW_WINDOW=50
-ATR_WINDOW=14
-RSI_WINDOW=14
-STOP_ATR_MULTIPLE=1.5
-MINIMUM_STOP_PCT=0.006
-TAKE_PROFIT_R=2.0
-TRAILING_TRIGGER_R=1.0
-HISTORY_BARS=500
-BACKTEST_BARS=1000
+USE_ORDER_BOOK=true
+PAIRS=BTC-EUR,ETH-EUR,SOL-EUR,XRP-EUR
+MAX_OPEN_POSITIONS=4
+CANDLE_INTERVAL=1d
+ENTRY_WINDOW=55
+EXIT_WINDOW=20
+ATR_WINDOW=20
+HISTORY_BARS=120
+BACKTEST_BARS=1440
 DATA_SOURCE=demo
 FUSION_READ_API_KEY=
 FUSION_BASE_URL=https://api.fusion.bitpanda.com
 APP_TIMEZONE=Europe/Berlin
-POLL_SECONDS=60
-SESSION_CLOSE_HOUR=23
-SESSION_CLOSE_MINUTE=45
-COOLDOWN_MINUTES=45
+POLL_SECONDS=300
 APP_LANGUAGE=de
 DATA_DIR=/data
 TZ=Europe/Berlin
@@ -238,7 +223,7 @@ Expect `8787/tcp` to map to `0.0.0.0:8787` or the intended LAN address.
 
 ### Fusion prices differ from the Bitpanda app
 
-Confirm the dashboard reports **Bitpanda Fusion**. The scanner displays the close of the latest completed 15-minute Fusion candle; the Bitpanda app can display a continuously changing quote, so a time-dependent difference is expected.
+Confirm the dashboard reports **Bitpanda Fusion**. The scanner displays the close of the latest completed daily Fusion candle; the Bitpanda app can display a continuously changing quote, so a time-dependent difference is expected.
 
 If switching an existing simulation from demo to Fusion, the database can still contain old demo snapshots. For a clean Fusion simulation use **Reset my paper accounts → Delete paper data**, then **Run scan now**.
 

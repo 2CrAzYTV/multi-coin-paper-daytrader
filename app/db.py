@@ -14,10 +14,10 @@ def utc_now() -> str:
 
 
 class Repository:
-    """SQLite persistence for the v2 multi-asset paper simulator.
+    """SQLite persistence for the spot trend-following paper simulator.
 
-    The ``dt_`` prefix keeps upgrades isolated from the older daily-swing
-    schema if a user already started version 0.1.
+    The ``tf_`` prefix (v0.3) keeps the data of older versions (``dt_``
+    intraday tables) untouched in the same file instead of migrating it.
     """
 
     def __init__(self, database_path: Path, starting_capital: float):
@@ -32,99 +32,95 @@ class Repository:
         connection.execute("PRAGMA foreign_keys=ON")
         return connection
 
+    def _query(self, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
+        connection = self._connect()
+        try:
+            return [dict(row) for row in connection.execute(sql, params).fetchall()]
+        finally:
+            connection.close()
+
+    def _write(self, sql: str, params: tuple[Any, ...] = ()) -> int:
+        with self._lock:
+            connection = self._connect()
+            try:
+                with connection:
+                    cursor = connection.execute(sql, params)
+                return int(cursor.lastrowid or 0)
+            finally:
+                connection.close()
+
     def initialize(self) -> None:
         schema = """
-        CREATE TABLE IF NOT EXISTS dt_portfolios (
+        CREATE TABLE IF NOT EXISTS tf_portfolios (
             strategy_id TEXT PRIMARY KEY,
             label TEXT NOT NULL,
             starting_capital REAL NOT NULL,
             realized_balance REAL NOT NULL,
             peak_equity REAL NOT NULL,
-            hard_locked INTEGER NOT NULL DEFAULT 0,
-            lock_reason TEXT NOT NULL DEFAULT '',
-            daily_locked INTEGER NOT NULL DEFAULT 0,
-            day_date TEXT,
-            day_start_equity REAL NOT NULL,
-            trades_today INTEGER NOT NULL DEFAULT 0,
+            fees_paid REAL NOT NULL DEFAULT 0,
             last_run_at TEXT,
             updated_at TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS dt_trades (
+        CREATE TABLE IF NOT EXISTS tf_trades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             strategy_id TEXT NOT NULL,
             pair TEXT NOT NULL,
             opened_at TEXT NOT NULL,
             closed_at TEXT,
-            side TEXT NOT NULL,
             units REAL NOT NULL,
             entry_price REAL NOT NULL,
             exit_price REAL,
-            stop_price REAL NOT NULL,
-            take_profit REAL NOT NULL,
-            initial_risk REAL NOT NULL,
-            opened_equity REAL NOT NULL,
             entry_fee REAL NOT NULL DEFAULT 0,
             exit_fee REAL NOT NULL DEFAULT 0,
+            entry_fill_source TEXT NOT NULL DEFAULT 'candle',
+            exit_fill_source TEXT,
             pnl REAL,
             pnl_pct REAL,
             reason TEXT,
             status TEXT NOT NULL DEFAULT 'open',
-            FOREIGN KEY (strategy_id) REFERENCES dt_portfolios(strategy_id)
+            FOREIGN KEY (strategy_id) REFERENCES tf_portfolios(strategy_id)
         );
 
-        CREATE TABLE IF NOT EXISTS dt_positions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS tf_positions (
             strategy_id TEXT NOT NULL,
             pair TEXT NOT NULL,
-            side TEXT NOT NULL,
             units REAL NOT NULL,
             entry_price REAL NOT NULL,
-            stop_price REAL NOT NULL,
-            take_profit REAL NOT NULL,
-            initial_risk REAL NOT NULL,
+            exit_level REAL NOT NULL,
             last_price REAL NOT NULL,
             open_trade_id INTEGER NOT NULL,
             opened_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            UNIQUE(strategy_id, pair),
-            FOREIGN KEY (strategy_id) REFERENCES dt_portfolios(strategy_id),
-            FOREIGN KEY (open_trade_id) REFERENCES dt_trades(id)
+            PRIMARY KEY(strategy_id, pair),
+            FOREIGN KEY (strategy_id) REFERENCES tf_portfolios(strategy_id),
+            FOREIGN KEY (open_trade_id) REFERENCES tf_trades(id)
         );
 
-        CREATE TABLE IF NOT EXISTS dt_snapshots (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS tf_snapshots (
             strategy_id TEXT NOT NULL,
             captured_at TEXT NOT NULL,
             equity REAL NOT NULL,
-            realized_balance REAL NOT NULL,
+            cash REAL NOT NULL,
             exposure REAL NOT NULL,
             drawdown REAL NOT NULL,
-            UNIQUE(strategy_id, captured_at),
-            FOREIGN KEY (strategy_id) REFERENCES dt_portfolios(strategy_id)
+            PRIMARY KEY(strategy_id, captured_at),
+            FOREIGN KEY (strategy_id) REFERENCES tf_portfolios(strategy_id)
         );
 
-        CREATE TABLE IF NOT EXISTS dt_markets (
+        CREATE TABLE IF NOT EXISTS tf_markets (
             pair TEXT PRIMARY KEY,
             candle_time TEXT NOT NULL,
             price REAL NOT NULL,
             signal INTEGER NOT NULL,
-            trend INTEGER NOT NULL,
-            rsi REAL NOT NULL,
+            entry_level REAL NOT NULL,
+            exit_level REAL NOT NULL,
             reason TEXT NOT NULL,
             source TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS dt_cooldowns (
-            strategy_id TEXT NOT NULL,
-            pair TEXT NOT NULL,
-            until_at TEXT NOT NULL,
-            PRIMARY KEY(strategy_id, pair),
-            FOREIGN KEY (strategy_id) REFERENCES dt_portfolios(strategy_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS dt_events (
+        CREATE TABLE IF NOT EXISTS tf_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at TEXT NOT NULL,
             level TEXT NOT NULL,
@@ -132,154 +128,120 @@ class Repository:
             message TEXT NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS idx_dt_trades_strategy
-            ON dt_trades(strategy_id, id DESC);
-        CREATE INDEX IF NOT EXISTS idx_dt_positions_strategy
-            ON dt_positions(strategy_id, pair);
-        CREATE INDEX IF NOT EXISTS idx_dt_snapshots_strategy
-            ON dt_snapshots(strategy_id, captured_at);
+        CREATE INDEX IF NOT EXISTS idx_tf_trades_strategy ON tf_trades(strategy_id, id DESC);
         """
-        with self._lock, self._connect() as connection:
-            connection.executescript(schema)
-            now = utc_now()
-            for strategy in STRATEGIES:
-                connection.execute(
-                    """
-                    INSERT OR IGNORE INTO dt_portfolios (
-                        strategy_id, label, starting_capital, realized_balance,
-                        peak_equity, day_start_equity, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        strategy.strategy_id,
-                        strategy.label,
-                        self.starting_capital,
-                        self.starting_capital,
-                        self.starting_capital,
-                        self.starting_capital,
-                        now,
-                    ),
-                )
+        with self._lock:
+            connection = self._connect()
+            try:
+                connection.executescript(schema)
+                now = utc_now()
+                with connection:
+                    for strategy in STRATEGIES:
+                        connection.execute(
+                            """
+                            INSERT OR IGNORE INTO tf_portfolios (
+                                strategy_id, label, starting_capital, realized_balance,
+                                peak_equity, updated_at
+                            ) VALUES (?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                strategy.strategy_id,
+                                strategy.label,
+                                self.starting_capital,
+                                self.starting_capital,
+                                self.starting_capital,
+                                now,
+                            ),
+                        )
+            finally:
+                connection.close()
 
     def reset(self) -> None:
-        tables = (
-            "dt_cooldowns",
-            "dt_positions",
-            "dt_snapshots",
-            "dt_trades",
-            "dt_markets",
-            "dt_events",
-            "dt_portfolios",
-        )
-        with self._lock, self._connect() as connection:
-            for table in tables:
-                connection.execute(f"DELETE FROM {table}")
+        tables = ("tf_positions", "tf_snapshots", "tf_trades", "tf_markets", "tf_events", "tf_portfolios")
+        with self._lock:
+            connection = self._connect()
+            try:
+                with connection:
+                    for table in tables:
+                        connection.execute(f"DELETE FROM {table}")
+            finally:
+                connection.close()
         self.initialize()
-        self.add_event("warning", None, "I reset the multi-coin paper accounts.")
+        self.add_event("warning", None, "I reset the paper account.")
+
+    # -- portfolios ---------------------------------------------------------
 
     def get_portfolio(self, strategy_id: str) -> dict[str, Any]:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM dt_portfolios WHERE strategy_id = ?", (strategy_id,)
-            ).fetchone()
-        if row is None:
+        rows = self._query("SELECT * FROM tf_portfolios WHERE strategy_id = ?", (strategy_id,))
+        if not rows:
             raise KeyError(strategy_id)
-        return dict(row)
+        return rows[0]
 
     def list_portfolios(self) -> list[dict[str, Any]]:
-        order = {strategy.strategy_id: index for index, strategy in enumerate(STRATEGIES)}
-        with self._connect() as connection:
-            rows = [dict(row) for row in connection.execute("SELECT * FROM dt_portfolios")]
-        return sorted(rows, key=lambda item: order.get(item["strategy_id"], 999))
+        known = {strategy.strategy_id for strategy in STRATEGIES}
+        return [row for row in self._query("SELECT * FROM tf_portfolios") if row["strategy_id"] in known]
 
     def save_portfolio(self, portfolio: dict[str, Any]) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
-                """
-                UPDATE dt_portfolios SET
-                    realized_balance = ?, peak_equity = ?, hard_locked = ?,
-                    lock_reason = ?, daily_locked = ?, day_date = ?,
-                    day_start_equity = ?, trades_today = ?, last_run_at = ?,
-                    updated_at = ?
-                WHERE strategy_id = ?
-                """,
-                (
-                    portfolio["realized_balance"],
-                    portfolio["peak_equity"],
-                    int(bool(portfolio["hard_locked"])),
-                    portfolio.get("lock_reason", ""),
-                    int(bool(portfolio.get("daily_locked", 0))),
-                    portfolio.get("day_date"),
-                    portfolio["day_start_equity"],
-                    int(portfolio.get("trades_today", 0)),
-                    portfolio.get("last_run_at"),
-                    utc_now(),
-                    portfolio["strategy_id"],
-                ),
-            )
+        self._write(
+            """
+            UPDATE tf_portfolios SET realized_balance = ?, peak_equity = ?, fees_paid = ?,
+                last_run_at = ?, updated_at = ?
+            WHERE strategy_id = ?
+            """,
+            (
+                portfolio["realized_balance"],
+                portfolio["peak_equity"],
+                portfolio["fees_paid"],
+                portfolio.get("last_run_at"),
+                utc_now(),
+                portfolio["strategy_id"],
+            ),
+        )
+
+    # -- positions ----------------------------------------------------------
 
     def list_positions(self, strategy_id: str | None = None) -> list[dict[str, Any]]:
-        query = "SELECT * FROM dt_positions"
-        params: tuple[Any, ...] = ()
-        if strategy_id is not None:
-            query += " WHERE strategy_id = ?"
-            params = (strategy_id,)
-        query += " ORDER BY strategy_id, pair"
-        with self._connect() as connection:
-            rows = connection.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
-
-    def get_position(self, strategy_id: str, pair: str) -> dict[str, Any] | None:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM dt_positions WHERE strategy_id = ? AND pair = ?",
-                (strategy_id, pair),
-            ).fetchone()
-        return dict(row) if row else None
+        if strategy_id is None:
+            return self._query("SELECT * FROM tf_positions ORDER BY strategy_id, pair")
+        return self._query(
+            "SELECT * FROM tf_positions WHERE strategy_id = ? ORDER BY pair", (strategy_id,)
+        )
 
     def save_position(self, position: dict[str, Any]) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO dt_positions (
-                    strategy_id, pair, side, units, entry_price, stop_price,
-                    take_profit, initial_risk, last_price, open_trade_id,
-                    opened_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(strategy_id, pair) DO UPDATE SET
-                    side = excluded.side,
-                    units = excluded.units,
-                    entry_price = excluded.entry_price,
-                    stop_price = excluded.stop_price,
-                    take_profit = excluded.take_profit,
-                    initial_risk = excluded.initial_risk,
-                    last_price = excluded.last_price,
-                    open_trade_id = excluded.open_trade_id,
-                    opened_at = excluded.opened_at,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    position["strategy_id"],
-                    position["pair"],
-                    position["side"],
-                    position["units"],
-                    position["entry_price"],
-                    position["stop_price"],
-                    position["take_profit"],
-                    position["initial_risk"],
-                    position["last_price"],
-                    position["open_trade_id"],
-                    position["opened_at"],
-                    utc_now(),
-                ),
-            )
+        self._write(
+            """
+            INSERT INTO tf_positions (
+                strategy_id, pair, units, entry_price, exit_level, last_price,
+                open_trade_id, opened_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(strategy_id, pair) DO UPDATE SET
+                units = excluded.units,
+                entry_price = excluded.entry_price,
+                exit_level = excluded.exit_level,
+                last_price = excluded.last_price,
+                open_trade_id = excluded.open_trade_id,
+                opened_at = excluded.opened_at,
+                updated_at = excluded.updated_at
+            """,
+            (
+                position["strategy_id"],
+                position["pair"],
+                position["units"],
+                position["entry_price"],
+                position["exit_level"],
+                position["last_price"],
+                position["open_trade_id"],
+                position["opened_at"],
+                utc_now(),
+            ),
+        )
 
     def delete_position(self, strategy_id: str, pair: str) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
-                "DELETE FROM dt_positions WHERE strategy_id = ? AND pair = ?",
-                (strategy_id, pair),
-            )
+        self._write(
+            "DELETE FROM tf_positions WHERE strategy_id = ? AND pair = ?", (strategy_id, pair)
+        )
+
+    # -- trades -------------------------------------------------------------
 
     def open_trade(
         self,
@@ -287,47 +249,25 @@ class Repository:
         strategy_id: str,
         pair: str,
         opened_at: str,
-        side: str,
         units: float,
         entry_price: float,
-        stop_price: float,
-        take_profit: float,
-        initial_risk: float,
-        opened_equity: float,
         entry_fee: float,
+        fill_source: str,
     ) -> int:
-        with self._lock, self._connect() as connection:
-            cursor = connection.execute(
-                """
-                INSERT INTO dt_trades (
-                    strategy_id, pair, opened_at, side, units, entry_price,
-                    stop_price, take_profit, initial_risk, opened_equity, entry_fee
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    strategy_id,
-                    pair,
-                    opened_at,
-                    side,
-                    units,
-                    entry_price,
-                    stop_price,
-                    take_profit,
-                    initial_risk,
-                    opened_equity,
-                    entry_fee,
-                ),
-            )
-            return int(cursor.lastrowid)
+        return self._write(
+            """
+            INSERT INTO tf_trades (
+                strategy_id, pair, opened_at, units, entry_price, entry_fee, entry_fill_source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (strategy_id, pair, opened_at, units, entry_price, entry_fee, fill_source),
+        )
 
     def get_trade(self, trade_id: int) -> dict[str, Any]:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM dt_trades WHERE id = ?", (trade_id,)
-            ).fetchone()
-        if row is None:
+        rows = self._query("SELECT * FROM tf_trades WHERE id = ?", (trade_id,))
+        if not rows:
             raise KeyError(trade_id)
-        return dict(row)
+        return rows[0]
 
     def close_trade(
         self,
@@ -336,20 +276,37 @@ class Repository:
         closed_at: str,
         exit_price: float,
         exit_fee: float,
+        fill_source: str,
         pnl: float,
         pnl_pct: float,
         reason: str,
     ) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
-                """
-                UPDATE dt_trades SET
-                    closed_at = ?, exit_price = ?, exit_fee = ?, pnl = ?,
-                    pnl_pct = ?, reason = ?, status = 'closed'
-                WHERE id = ?
-                """,
-                (closed_at, exit_price, exit_fee, pnl, pnl_pct, reason, trade_id),
-            )
+        self._write(
+            """
+            UPDATE tf_trades SET closed_at = ?, exit_price = ?, exit_fee = ?, exit_fill_source = ?,
+                pnl = ?, pnl_pct = ?, reason = ?, status = 'closed'
+            WHERE id = ?
+            """,
+            (closed_at, exit_price, exit_fee, fill_source, pnl, pnl_pct, reason, trade_id),
+        )
+
+    def recent_trades(self, limit: int = 100) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(limit, 500))
+        return self._query("SELECT * FROM tf_trades ORDER BY id DESC LIMIT ?", (safe_limit,))
+
+    def trade_stats(self, strategy_id: str) -> dict[str, Any]:
+        rows = self._query(
+            """
+            SELECT COUNT(*) AS closed, SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) AS wins
+            FROM tf_trades WHERE strategy_id = ? AND status = 'closed'
+            """,
+            (strategy_id,),
+        )
+        closed = int(rows[0]["closed"] or 0)
+        wins = int(rows[0]["wins"] or 0)
+        return {"closed_trades": closed, "win_rate_pct": round(wins / closed * 100, 1) if closed else None}
+
+    # -- snapshots ----------------------------------------------------------
 
     def add_snapshot(
         self,
@@ -357,128 +314,77 @@ class Repository:
         strategy_id: str,
         captured_at: str,
         equity: float,
-        realized_balance: float,
+        cash: float,
         exposure: float,
         drawdown_value: float,
     ) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
+        self._write(
+            """
+            INSERT INTO tf_snapshots (strategy_id, captured_at, equity, cash, exposure, drawdown)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(strategy_id, captured_at) DO UPDATE SET
+                equity = excluded.equity, cash = excluded.cash,
+                exposure = excluded.exposure, drawdown = excluded.drawdown
+            """,
+            (strategy_id, captured_at, equity, cash, exposure, drawdown_value),
+        )
+
+    def snapshot_series(self, limit: int = 1_500) -> dict[str, list[dict[str, Any]]]:
+        return {
+            strategy.strategy_id: self._query(
                 """
-                INSERT INTO dt_snapshots (
-                    strategy_id, captured_at, equity, realized_balance, exposure, drawdown
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(strategy_id, captured_at) DO UPDATE SET
-                    equity = excluded.equity,
-                    realized_balance = excluded.realized_balance,
-                    exposure = excluded.exposure,
-                    drawdown = excluded.drawdown
+                SELECT captured_at, equity, drawdown FROM (
+                    SELECT captured_at, equity, drawdown FROM tf_snapshots
+                    WHERE strategy_id = ? ORDER BY captured_at DESC LIMIT ?
+                ) ORDER BY captured_at ASC
                 """,
-                (
-                    strategy_id,
-                    captured_at,
-                    equity,
-                    realized_balance,
-                    exposure,
-                    drawdown_value,
-                ),
+                (strategy.strategy_id, limit),
             )
+            for strategy in STRATEGIES
+        }
 
-    def snapshot_series(self, limit: int = 600) -> dict[str, list[dict[str, Any]]]:
-        result: dict[str, list[dict[str, Any]]] = {}
-        with self._connect() as connection:
-            for strategy in STRATEGIES:
-                rows = connection.execute(
-                    """
-                    SELECT captured_at, equity, drawdown FROM (
-                        SELECT captured_at, equity, drawdown
-                        FROM dt_snapshots WHERE strategy_id = ?
-                        ORDER BY captured_at DESC LIMIT ?
-                    ) ORDER BY captured_at ASC
-                    """,
-                    (strategy.strategy_id, limit),
-                ).fetchall()
-                result[strategy.strategy_id] = [dict(row) for row in rows]
-        return result
-
-    def recent_trades(self, limit: int = 100) -> list[dict[str, Any]]:
-        safe_limit = max(1, min(limit, 500))
-        with self._connect() as connection:
-            rows = connection.execute(
-                "SELECT * FROM dt_trades ORDER BY id DESC LIMIT ?", (safe_limit,)
-            ).fetchall()
-        return [dict(row) for row in rows]
+    # -- markets ------------------------------------------------------------
 
     def save_market(self, snapshot: SignalSnapshot, source: str) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO dt_markets (
-                    pair, candle_time, price, signal, trend, rsi, reason, source, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(pair) DO UPDATE SET
-                    candle_time = excluded.candle_time,
-                    price = excluded.price,
-                    signal = excluded.signal,
-                    trend = excluded.trend,
-                    rsi = excluded.rsi,
-                    reason = excluded.reason,
-                    source = excluded.source,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    snapshot.pair,
-                    snapshot.candle_time,
-                    snapshot.price,
-                    snapshot.direction,
-                    snapshot.trend,
-                    snapshot.rsi,
-                    snapshot.reason,
-                    source,
-                    utc_now(),
-                ),
-            )
+        self._write(
+            """
+            INSERT INTO tf_markets (
+                pair, candle_time, price, signal, entry_level, exit_level, reason, source, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(pair) DO UPDATE SET
+                candle_time = excluded.candle_time, price = excluded.price,
+                signal = excluded.signal, entry_level = excluded.entry_level,
+                exit_level = excluded.exit_level, reason = excluded.reason,
+                source = excluded.source, updated_at = excluded.updated_at
+            """,
+            (
+                snapshot.pair,
+                snapshot.candle_time,
+                snapshot.price,
+                snapshot.direction,
+                snapshot.entry_level,
+                snapshot.exit_level,
+                snapshot.reason,
+                source,
+                utc_now(),
+            ),
+        )
 
     def get_market(self, pair: str) -> dict[str, Any] | None:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM dt_markets WHERE pair = ?", (pair,)
-            ).fetchone()
-        return dict(row) if row else None
+        rows = self._query("SELECT * FROM tf_markets WHERE pair = ?", (pair,))
+        return rows[0] if rows else None
 
     def list_markets(self) -> list[dict[str, Any]]:
-        with self._connect() as connection:
-            rows = connection.execute("SELECT * FROM dt_markets ORDER BY pair").fetchall()
-        return [dict(row) for row in rows]
+        return self._query("SELECT * FROM tf_markets ORDER BY pair")
 
-    def set_cooldown(self, strategy_id: str, pair: str, until_at: str) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO dt_cooldowns(strategy_id, pair, until_at) VALUES (?, ?, ?)
-                ON CONFLICT(strategy_id, pair) DO UPDATE SET until_at = excluded.until_at
-                """,
-                (strategy_id, pair, until_at),
-            )
-
-    def get_cooldown(self, strategy_id: str, pair: str) -> str | None:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT until_at FROM dt_cooldowns WHERE strategy_id = ? AND pair = ?",
-                (strategy_id, pair),
-            ).fetchone()
-        return str(row["until_at"]) if row else None
+    # -- events -------------------------------------------------------------
 
     def add_event(self, level: str, strategy_id: str | None, message: str) -> None:
-        with self._lock, self._connect() as connection:
-            connection.execute(
-                "INSERT INTO dt_events(created_at, level, strategy_id, message) VALUES (?, ?, ?, ?)",
-                (utc_now(), level, strategy_id, message),
-            )
+        self._write(
+            "INSERT INTO tf_events(created_at, level, strategy_id, message) VALUES (?, ?, ?, ?)",
+            (utc_now(), level, strategy_id, message),
+        )
 
     def recent_events(self, limit: int = 30) -> list[dict[str, Any]]:
         safe_limit = max(1, min(limit, 200))
-        with self._connect() as connection:
-            rows = connection.execute(
-                "SELECT * FROM dt_events ORDER BY id DESC LIMIT ?", (safe_limit,)
-            ).fetchall()
-        return [dict(row) for row in rows]
+        return self._query("SELECT * FROM tf_events ORDER BY id DESC LIMIT ?", (safe_limit,))

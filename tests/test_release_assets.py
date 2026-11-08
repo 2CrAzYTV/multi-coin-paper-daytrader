@@ -33,9 +33,9 @@ class ReleaseAssetTests(unittest.TestCase):
         package = (ROOT / "app/__init__.py").read_text()
         main = (ROOT / "app/main.py").read_text()
         dockerfile = (ROOT / "Dockerfile").read_text()
-        self.assertIn('__version__ = "0.2.0"', package)
-        self.assertIn('version="0.2.0"', main)
-        self.assertIn('org.opencontainers.image.version="0.2.0"', dockerfile)
+        self.assertIn('__version__ = "0.3.0"', package)
+        self.assertIn('version="0.3.0"', main)
+        self.assertIn('org.opencontainers.image.version="0.3.0"', dockerfile)
 
     def test_unraid_icon_is_high_resolution_transparent_png(self):
         icon = (ROOT / "unraid/multi-coin-paper-daytrader.png").read_bytes()
@@ -63,7 +63,7 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("Check for Updates", guide)
         self.assertIn("/mnt/user/appdata/paper-trading-bot/data", guide)
         self.assertIn("@sha256:", guide)
-        self.assertIn("latest completed 15-minute Fusion candle", guide)
+        self.assertIn("latest completed daily Fusion candle", guide)
         self.assertIn("Reset my paper accounts → Delete paper data", guide)
         self.assertIn("--pids-limit=2048", guide)
         self.assertIn("APP_LANGUAGE=de", guide)
@@ -96,7 +96,7 @@ class ReleaseAssetTests(unittest.TestCase):
         self.assertIn("minimumFractionDigits: 4, maximumFractionDigits: 4", javascript)
         self.assertIn("minimumFractionDigits: 6, maximumFractionDigits: 6", javascript)
         self.assertIn("formatMarketPrice(item.price)", javascript)
-        self.assertIn("formatMarketPrice(item.stop_price)", javascript)
+        self.assertIn("formatMarketPrice(item.exit_level)", javascript)
 
     def test_dashboard_supports_persistent_english_and_german(self):
         html = (ROOT / "app/static/index.html").read_text()

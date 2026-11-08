@@ -1,8 +1,10 @@
-# Multi-Coin Paper Daytrader – Unraid Edition
+# Multi-Coin Paper Trader – Unraid Edition
 
 [![CI and container image](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/actions/workflows/container-image.yml/badge.svg)](https://github.com/2CrAzYTV/multi-coin-paper-daytrader/actions/workflows/container-image.yml)
 
-Public beta `v0.2.0` of a **paper-only** multi-coin crypto day-trading simulator for Unraid and Docker. It uses €1,000 virtual starting capital by default and cannot place real-money orders.
+Public beta `v0.3.0` of a **paper-only** crypto trend-following simulator for Unraid and Docker. It simulates one realistic Bitpanda Fusion **spot** account (long only, no leverage, real fees, order-book prices), uses €1,000 virtual starting capital by default and cannot place real-money orders.
+
+> The repository and image keep the historic name `multi-coin-paper-daytrader`. Since v0.3.0 the simulator no longer day-trades - see [Why not intraday](#why-not-intraday).
 
 ## Install on Unraid
 
@@ -35,55 +37,37 @@ The complete installation, update, backup, rollback, and troubleshooting guide i
 
 > The dashboard has no authentication. Keep it inside a trusted LAN and do not expose port 8787 directly to the internet.
 
-## What the simulator compares
+## Strategy: Donchian trend following (one strategy, spot only)
 
-The default universe is `BTC-EUR`, `ETH-EUR`, `SOL-EUR`, `XRP-EUR`, and `ADA-EUR`. Each comparison strategy starts with the same €1,000 virtual portfolio:
+The default universe is `BTC-EUR`, `ETH-EUR`, `SOL-EUR` and `XRP-EUR` - the only Fusion EUR pairs with more than €10 million daily volume and spreads of about 1-2 basis points (measured November 2026; `ADA-EUR` was dropped at ~18 bp spread).
 
-1. Long only, up to 1× exposure
-2. Long/short, up to 1× exposure
-3. Long/short, up to 2× exposure
+Rules, evaluated once per closed **daily** candle (classic "Turtle System 2"):
 
-The €1,000 is shared across all configured coins inside each strategy; it is not additional capital per coin.
+- **Buy** when the daily close is above the highest high of the previous `ENTRY_WINDOW` (55) days
+- **Sell** when the daily close is below the lowest low of the previous `EXIT_WINDOW` (20) days
+- both channels exclude the current candle (no look-ahead)
+- each position gets an equal share of equity (`1 / number of pairs`), raised to the exchange minimum order if the share is smaller and the cash allows it
+- long only, no short selling, no leverage, never more than the available cash
+- simultaneous buy signals are ranked by breakout strength (distance above the channel in ATR)
 
-## Safety contract
+## Realism model
 
-This repository deliberately remains **paper only**:
+| Item | Model |
+| --- | --- |
+| Fee | `FEE_RATE=0.0025` per order - Bitpanda Fusion entry tier (< €100k 30-day volume) |
+| Live fills | volume-weighted price walked through the **real Fusion order book** (read-only `GET /v1/orderbook/{pair}`), incl. spread and depth |
+| Backtest fills | daily close ± `SLIPPAGE_RATE` (0.05%) |
+| Order limits | Fusion `minOrderAmount`, `maxOrderAmount` and `sizeIncrement` per pair |
+| Account | one spot account: cash + coins, no margin |
+| Backtest history | up to 1,440 daily candles (~4 years) from Fusion |
 
-- There is no function that creates, modifies, cancels, or confirms a real order.
-- The Bitpanda client exposes read-only `GET` market-data operations.
-- The application refuses to start when `PAPER_ONLY=false`.
-- Fusion should be used with an API key that has **Read** permission only; never enable **Trade** or **Transfer** for this application.
-- The Fusion API key is not returned by the dashboard or public config API.
+Not modelled: taxes (crypto gains held < 1 year are taxable in Germany), exchange outages, and the exact minute of execution after the daily close.
 
-Bitpanda documents Fusion API-key creation here: [Fusion API key documentation](https://docs.fusion.bitpanda.com/api-key-generation-363384m0).
+## Why not intraday
 
-## Default risk limits
+Before v0.3.0 the simulator day-traded 15-minute candles. Tested on one year of real Fusion 15-minute data (Nov 2025 - Nov 2026) with the real fee of 0.25% per order, every intraday variant lost money in both half-years - the EMA crossover, and Opening Range Breakouts at 09:00 and 15:30. Before costs the ORB variants had a small but consistent edge (≈ +3-4% per half-year); a round trip costs ≈ 0.6%, several times the average gross gain per trade.
 
-| Rule | Default | Effect with €1,000 |
-| --- | ---: | ---: |
-| Modelled risk per trade | 0.5% | approximately €5 maximum |
-| Aggregate open risk | 1% | approximately €10 maximum |
-| Daily loss limit | 2% | approximately €20 maximum |
-| Simultaneous positions | 2 | shared across all coins |
-| New trades per day | 3 | shared across all coins |
-| Persistent emergency stop | 10% drawdown | closes and locks until reset |
-| Maximum leverage | 2× | comparison strategy 3 only |
-
-Position sizing uses stop distance and includes assumed fees and slippage. Real markets can gap beyond stops, so these are simulation limits rather than guarantees.
-
-## Strategy defaults
-
-- 15-minute signal interval
-- 1-hour trend filter
-- fresh EMA-9/EMA-21 crossover in the direction of the hourly trend
-- RSI and relative candle-volume filters
-- stop distance equal to the larger of `1.5 × ATR(14)` and `0.6%`
-- `2R` profit target
-- stop moved to break-even after `1R`
-- 45-minute per-pair cooldown after an exit
-- all open positions closed at 23:45 in `Europe/Berlin`
-
-The application requests active pairs and skips unavailable markets. Fusion documents the read-only [pair list](https://docs.fusion.bitpanda.com/get-trading-pairs-4295528e0) and [OHLCV candle](https://docs.fusion.bitpanda.com/get-candles-4311313e0) endpoints used by the project.
+The same daily Donchian rule on four years of Fusion daily data (Nov 2022 - Nov 2026, 4 pairs, real fees) returned about **+39% per year with a 30% maximum drawdown**, versus +38% per year and a 70% drawdown for equal-weight buy-and-hold, with only ~34 trades. That is one sample from a market that rose strongly; it is evidence for the approach, not a promise.
 
 ## Fusion key on Unraid
 
@@ -132,24 +116,25 @@ An image update does not automatically replace the locally saved Unraid template
 
 - **Language:** switch the complete dashboard between English and German.
 - **Run scan now:** retrieve the latest closed candle without processing the same candle twice.
-- **Run multi-coin backtest:** simulate all configured pairs with one shared risk budget without changing active paper portfolios.
+- **Run 4-year backtest:** simulate the strategy and equal-weight buy-and-hold with the same costs, without changing the paper account.
 - **Reset paper data:** delete only the local simulation state.
 
-The default poll interval is 60 seconds, but the strategy can trade at most once per newly closed 15-minute candle. A signal does not guarantee a trade.
+The default poll interval is 300 seconds. A new decision happens only once per closed daily candle (00:00 UTC); between candles the open positions are marked to the live order-book mid price.
 
 ## Configuration guardrails
-
-The application reads standard environment variables. Unraid supplies them through the native template; Compose supplies safe defaults and accepts optional shell/`.env` overrides.
 
 Code-enforced limits include:
 
 - `APP_LANGUAGE` must be `en` or `de`
-- `RISK_PER_TRADE` at most `0.01`
-- `MAX_AGGREGATE_RISK` at most `0.02`
-- `MAX_DAILY_LOSS` at most `0.02`
-- `MAX_OPEN_POSITIONS` at most `3`
-- `MAX_TRADES_PER_DAY` at most `6`
 - `PAPER_ONLY` must remain `true`
+- `CANDLE_INTERVAL` must be `1d` or `4h`
+- `2 <= EXIT_WINDOW < ENTRY_WINDOW <= 250`
+- `FEE_RATE` and `SLIPPAGE_RATE` between 0 and 1%
+- `MAX_OPEN_POSITIONS` between 1 and the number of `PAIRS`
+
+## Upgrading from v0.2
+
+v0.3.0 stores its data in new `tf_*` tables. The old intraday `dt_*` tables stay untouched in the same SQLite file; nothing is migrated or deleted. Obsolete variables (`RISK_PER_TRADE`, `MAX_DAILY_LOSS`, EMA/ADX/RSI windows, session close, cooldown, …) are ignored and can be removed from the template.
 
 ## Tests
 
@@ -168,8 +153,9 @@ Pull requests also build the complete Docker image before merge. The protected `
 ## Limitations and disclaimer
 
 - No return or side-income promise is made.
-- Short history and overfitting can make backtests misleading.
-- Fees and slippage are modelled; every real execution detail is not reproduced.
+- Four years of daily data contain only a few dozen trades; overfitting and luck can make backtests misleading.
+- Trend following has long flat or losing periods (e.g. 2025-2026 in the backtest).
+- Fees, spread and order-book depth are modelled; every real execution detail is not reproduced.
 - Correlated crypto assets are not treated as true diversification.
 - Taxes are not calculated.
 - Extended paper testing is required before drawing conclusions.

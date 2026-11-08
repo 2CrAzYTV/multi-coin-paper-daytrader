@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 from .config import Settings
-from .models import PairConstraint
+from .models import Fill, PairConstraint
+from .risk import walk_order_book
 
 
 INTERVAL_SECONDS = {
@@ -59,7 +60,7 @@ class MarketData:
         limit: int | None = None,
     ) -> pd.DataFrame:
         selected_interval = interval or self.settings.candle_interval
-        selected_limit = min(1_000, limit or self.settings.history_bars)
+        selected_limit = min(1_440, limit or self.settings.history_bars)
         if self.settings.data_source == "demo":
             return self._demo_history(pair, selected_interval, selected_limit)
         return self._fusion_history(pair, selected_interval, selected_limit)
@@ -92,6 +93,47 @@ class MarketData:
                 "I found none of the configured EUR pairs active on Bitpanda Fusion."
             )
         return constraints
+
+    def order_book_fill(
+        self,
+        pair: str,
+        side: str,
+        *,
+        notional: float | None = None,
+        units: float | None = None,
+    ) -> Fill | None:
+        """Simulated fill priced from the live (read-only) Fusion order book.
+
+        Returns None in demo mode, when disabled, or when the book cannot be
+        read; the caller then falls back to candle close plus slippage.
+        """
+        if self.settings.data_source != "fusion" or not self.settings.use_order_book:
+            return None
+        try:
+            payload = self._get_json(f"/v1/orderbook/{pair}")
+            book_side = payload["asks"] if side == "buy" else payload["bids"]
+            levels = [
+                (float(level["price"]), float(level["quantity"])) for level in book_side
+            ]
+        except (MarketDataError, KeyError, TypeError, ValueError):
+            return None
+        levels.sort(key=lambda item: item[0], reverse=(side != "buy"))
+        result = walk_order_book(levels, notional=notional, units=units)
+        if result is None:
+            return None
+        price, filled = result
+        return Fill(price=price, units=filled, source="order_book")
+
+    def mid_price(self, pair: str) -> float | None:
+        if self.settings.data_source != "fusion":
+            return None
+        try:
+            payload = self._get_json(f"/v1/orderbook/{pair}")
+            bid = float(payload["bids"][0]["price"])
+            ask = float(payload["asks"][0]["price"])
+        except (MarketDataError, KeyError, IndexError, TypeError, ValueError):
+            return None
+        return (bid + ask) / 2 if bid > 0 and ask > 0 else None
 
     def _fusion_history(self, pair: str, interval: str, limit: int) -> pd.DataFrame:
         payload = self._get_json(

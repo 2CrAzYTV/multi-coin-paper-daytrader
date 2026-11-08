@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### v0.3.0 - one realistic strategy instead of three intraday variants
+
+- I replaced the three 15-minute EMA portfolios (long-only, long/short, 2x)
+  with **one** Donchian trend-following strategy on daily candles (buy above
+  the 55-day high, sell below the 20-day low), long only, spot, no leverage.
+- Reason: on one year of real Fusion 15-minute data with the real 0.25% fee,
+  every intraday variant tested (EMA crossover, Opening Range Breakout 09:00
+  and 15:30) lost money in both half-years; on four years of daily data the
+  Donchian rule returned ~+39%/year with 30% max drawdown vs. +38%/year and
+  70% drawdown for buy-and-hold (details in the README).
+- Realism: default fee 0.25% per order (Fusion entry tier, was 0.10%), live
+  fills walk the real read-only Fusion order book, one spot account that can
+  never spend more than its cash, exchange minimum order sizes respected.
+- Universe: BTC, ETH, SOL, XRP (ADA dropped: ~18 bp spread, low volume).
+- Backtest: up to 1,440 daily candles (~4 years) instead of 1,000 15-minute
+  candles (~10 days); reports CAGR, fees paid and time invested.
+- Removed: short selling, leverage, daily loss limit, 10% emergency lock,
+  session close, cooldown, ADX/RSI/EMA filters and their variables.
+- Data: new `tf_*` SQLite tables; the old `dt_*` tables are left untouched.
+
 - I added an ADX trend-strength filter (`ADX_WINDOW`, `ADX_THRESHOLD`, 1h
   timeframe) that gates the EMA crossover signal on genuine trend strength
   instead of just EMA order. Backtested against ~10 days of real Fusion

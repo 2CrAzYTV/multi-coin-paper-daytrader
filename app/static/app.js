@@ -9,72 +9,74 @@ const state = {
 
 const translations = {
   en: {
-    pageTitle: "Multi-Coin Paper Daytrader",
+    pageTitle: "Multi-Coin Paper Trader",
     edition: "Paper · Unraid Edition",
     paperOnly: "PAPER ONLY",
     language: "Language",
     languageAria: "Dashboard language",
-    eyebrow: "Five markets. One shared risk budget.",
-    heroTitle: "Crypto day trading.<br /><span>Without real money.</span>",
-    heroCopy: "I scan liquid EUR pairs for 15-minute signals and compare long-only, long/short, and up to 2× leverage. I keep every execution simulated.",
+    eyebrow: "Spot only. Real fees. One strategy.",
+    heroTitle: "Crypto trend following.<br /><span>Without real money.</span>",
+    heroCopy: "I check the most liquid EUR pairs once per daily candle. I buy a close above the 55-day high and sell a close below the 20-day low - long only, no leverage, with Bitpanda Fusion fees and order-book prices.",
     status: "Status",
     scanInterval: "Scan interval",
     dataSource: "Data source",
-    riskLimitsAria: "My risk limits",
+    riskLimitsAria: "My trading costs and rules",
     virtualCapital: "Virtual capital",
-    perStrategy: "per comparison strategy",
-    riskPerTrade: "Risk per trade",
-    portfolioWide: "I calculate it portfolio-wide",
-    aggregateRisk: "Aggregate open risk",
-    acrossCoins: "across every coin",
-    dailyLimit: "Daily limit",
-    acrossTrades: "across every trade",
-    emergencyStop: "Emergency stop",
-    untilReset: "until I reset manually",
+    oneAccount: "one spot account",
+    feePerOrder: "Fee per order",
+    fusionTier: "Fusion entry tier",
+    roundTrip: "Round-trip cost",
+    feesAndSlippage: "fees + slippage, buy and sell",
+    positionSize: "Position size",
+    ofEquity: "of equity, min. exchange order",
+    channels: "Channels",
+    entryExit: "entry high / exit low",
     marketUniverse: "My market universe",
     selectedPairs: "Selected EUR pairs",
     runScan: "Run scan now",
-    runBacktest: "Run multi-coin backtest",
+    runBacktest: "Run 4-year backtest",
     scanner: "Scanner",
     latestSignals: "My latest market signals",
-    trendFilter: "15 min · 1 h trend filter",
+    intervalHint: "{interval} candles · {entry}/{exit} channel",
     liveSimulation: "Live simulation",
-    paperPortfolios: "My paper portfolios",
+    paperPortfolios: "My paper account",
     notRun: "I have not run a scan yet",
     exposure: "Exposure",
     openPositionsTitle: "My open paper positions",
-    strategy: "Strategy",
     pair: "Pair",
-    side: "Side",
-    notional: "Notional",
-    stop: "Stop",
-    target: "Target",
+    entryPrice: "Entry",
+    exitPrice: "Exit",
+    lastPrice: "Last",
+    notional: "Value",
+    exitBelow: "Sell below",
     openPnl: "Open P&L",
+    since: "Since",
     noOpenPosition: "I have no open position.",
     performance: "Performance",
     paperEquity: "My paper equity",
     chartAria: "My simulated equity history",
     chartEmpty: "I start with a paper scan or backtest.",
     historicalSimulation: "Historical simulation",
-    multiCoinBacktest: "My multi-coin backtest",
-    backtestDisclaimer: "I do not treat a backtest as a return promise. Short intraday history, assumed fees, execution, and future market conditions can differ substantially.",
+    multiCoinBacktest: "My backtest with real costs",
+    backtestDisclaimer: "I do not treat a backtest as a return promise. Four years contain only a few dozen trades, and future market conditions can differ substantially.",
     journal: "Journal",
     latestTrades: "My latest trades",
     result: "Result",
     tradeStatus: "Status",
     noTrades: "I have no trades yet.",
     safetyModel: "My safety model",
-    portfolioBrakes: "Portfolio-wide brakes",
-    allowAtMost: "I allow at most",
-    simultaneousPositions: "simultaneous positions",
-    newTradesPerDay: "new trades per day",
-    closeDaily: "I close every open position each day",
+    portfolioBrakes: "How I stay realistic",
+    ruleSpot: "Spot only: no short selling, no leverage, never more than the cash I hold",
+    ruleFees: "Fees on every order and prices from the real order book",
+    ruleMinOrder: "Exchange minimum order sizes and size increments",
+    allowAtMost: "I hold at most",
+    simultaneousPositions: "positions at the same time",
     noOrderEndpoints: "I include no order, account, or transfer endpoint",
     system: "System",
     eventLog: "My event log",
     noEvents: "I have no events yet.",
-    resetTitle: "Reset my paper accounts",
-    resetCopy: "I delete only local simulations and start again with €1,000.",
+    resetTitle: "Reset my paper account",
+    resetCopy: "I delete only local simulations and start again with {capital}.",
     deleteData: "Delete paper data",
     loading: "Loading …",
     offlineDemo: "Offline demo",
@@ -83,116 +85,114 @@ const translations = {
     simulationActive: "Simulation active",
     safetyError: "Safety error",
     sourceDemo: "I start safely with reproducible demo data. For Fusion, I provide an API key with Read permission only.",
-    sourceFusion: "I use Fusion market data and never expose the API key to the dashboard.",
+    sourceFusion: "I use Fusion market data and the read-only order book, and never expose the API key to the dashboard.",
     waiting: "waiting",
     noClosedCandle: "I have not processed a closed candle yet.",
-    longSetup: "Long setup",
-    shortSetup: "Short setup",
-    neutral: "Neutral",
-    uptrend: "Uptrend",
-    downtrend: "Downtrend",
-    noTrend: "No confirmed trend",
-    locked: "LOCKED",
-    dailyStop: "DAILY STOP",
+    buySignal: "Buy signal",
+    sellSignal: "Sell signal",
+    neutral: "No signal",
+    breakoutAbove: "Buy above {price} ({distance})",
+    exitUnder: "Sell below {price}",
     cash: "Cash",
-    openCount: "{count} open",
-    openPositions: "Open positions",
-    tradesToday: "Trades today",
-    openRisk: "Open risk",
-    effectiveLeverage: "Effective leverage",
+    invested: "Invested",
+    openPositions: "Positions",
+    feesPaid: "Fees paid",
+    drawdownNow: "Drawdown",
+    closedTrades: "Closed trades",
+    winRate: "Win rate",
     lastRun: "Last run",
     updated: "Updated {time}",
-    long: "Long",
-    short: "Short",
     open: "Open",
     closed: "Closed",
-    backtestPeriod: "{from} to {to} · {bars} candles · {pairs} pairs",
+    backtestPeriod: "{from} to {to} · {bars} candles · {pairs} pairs · fee {fee} per order",
     totalReturn: "Total return",
+    cagr: "Per year",
     maxDrawdown: "Max. drawdown",
     trades: "Trades",
-    winRate: "Win rate",
-    dailyStops: "Daily stops",
-    maxPositions: "Max. positions",
-    backtestChartTitle: "Multi-coin backtest",
-    equalWeightHold: "Equal-weight hold",
+    timeInvested: "Time invested",
+    backtestChartTitle: "Backtest equity",
+    equalWeightHold: "Buy and hold (equal weight)",
+    strategyName: "Trend following · {entry}/{exit} breakout",
     unavailable: "Unavailable",
     scanning: "I am scanning …",
-    marketsProcessed: "{count} new markets processed.",
+    marketsProcessed: "{count} new candles processed.",
     backtesting: "I am running the backtest …",
-    backtestDone: "I completed the multi-coin backtest.",
-    resetConfirm: "Do I really want to delete every local multi-coin paper trade and balance?",
-    resetDone: "I reset the paper accounts.",
+    backtestDone: "I completed the backtest.",
+    resetConfirm: "Do I really want to delete every local paper trade and balance?",
+    resetDone: "I reset the paper account.",
     info: "info",
     warning: "warning",
     error: "error",
   },
   de: {
-    pageTitle: "Multi-Coin Paper-Daytrader",
+    pageTitle: "Multi-Coin Paper-Trader",
     edition: "Paper · Unraid-Ausgabe",
     paperOnly: "NUR PAPER",
     language: "Sprache",
     languageAria: "Sprache der Benutzeroberfläche",
-    eyebrow: "Fünf Märkte. Ein gemeinsames Risikobudget.",
-    heroTitle: "Krypto-Daytrading.<br /><span>Ohne Echtgeld.</span>",
-    heroCopy: "Ich prüfe liquide EUR-Paare auf 15-Minuten-Signale und vergleiche Nur-Long, Long/Short sowie bis zu 2× Hebel. Jede Ausführung bleibt simuliert.",
+    eyebrow: "Nur Spot. Echte Gebühren. Eine Strategie.",
+    heroTitle: "Krypto-Trendfolge.<br /><span>Ohne Echtgeld.</span>",
+    heroCopy: "Ich prüfe die liquidesten EUR-Paare einmal pro Tageskerze. Ich kaufe, wenn der Kurs über dem 55-Tage-Hoch schließt, und verkaufe, wenn er unter dem 20-Tage-Tief schließt – nur Long, ohne Hebel, mit Bitpanda-Fusion-Gebühren und Orderbuch-Preisen.",
     status: "Status",
     scanInterval: "Prüfintervall",
     dataSource: "Datenquelle",
-    riskLimitsAria: "Meine Risikolimits",
+    riskLimitsAria: "Meine Kosten und Regeln",
     virtualCapital: "Virtuelles Kapital",
-    perStrategy: "je Vergleichsstrategie",
-    riskPerTrade: "Risiko je Trade",
-    portfolioWide: "Ich berechne es portfolioweit",
-    aggregateRisk: "Gesamtes offenes Risiko",
-    acrossCoins: "über alle Coins",
-    dailyLimit: "Tageslimit",
-    acrossTrades: "über alle Trades",
-    emergencyStop: "Not-Aus",
-    untilReset: "bis zu meinem manuellen Reset",
+    oneAccount: "ein Spot-Konto",
+    feePerOrder: "Gebühr je Order",
+    fusionTier: "Fusion-Einstiegsstufe",
+    roundTrip: "Kosten Kauf + Verkauf",
+    feesAndSlippage: "Gebühren + Slippage, beide Seiten",
+    positionSize: "Positionsgröße",
+    ofEquity: "des Kapitals, mind. Börsenminimum",
+    channels: "Kanäle",
+    entryExit: "Einstiegs-Hoch / Ausstiegs-Tief",
     marketUniverse: "Mein Marktuniversum",
     selectedPairs: "Ausgewählte EUR-Paare",
     runScan: "Scan jetzt starten",
-    runBacktest: "Multi-Coin-Backtest starten",
+    runBacktest: "4-Jahres-Backtest starten",
     scanner: "Scanner",
     latestSignals: "Meine neuesten Marktsignale",
-    trendFilter: "15 Min. · 1-Std.-Trendfilter",
+    intervalHint: "{interval}-Kerzen · Kanal {entry}/{exit}",
     liveSimulation: "Live-Simulation",
-    paperPortfolios: "Meine Paper-Portfolios",
+    paperPortfolios: "Mein Paper-Konto",
     notRun: "Ich habe noch keinen Scan ausgeführt",
     exposure: "Engagement",
     openPositionsTitle: "Meine offenen Paper-Positionen",
-    strategy: "Strategie",
     pair: "Paar",
-    side: "Richtung",
-    notional: "Nominalwert",
-    stop: "Stop",
-    target: "Ziel",
+    entryPrice: "Einstieg",
+    exitPrice: "Ausstieg",
+    lastPrice: "Aktuell",
+    notional: "Wert",
+    exitBelow: "Verkauf unter",
     openPnl: "Offener G/V",
+    since: "Seit",
     noOpenPosition: "Ich habe keine offene Position.",
     performance: "Wertentwicklung",
     paperEquity: "Mein Paper-Kapital",
     chartAria: "Mein simulierter Kapitalverlauf",
     chartEmpty: "Ich beginne mit einem Paper-Scan oder Backtest.",
     historicalSimulation: "Historische Simulation",
-    multiCoinBacktest: "Mein Multi-Coin-Backtest",
-    backtestDisclaimer: "Ich behandle einen Backtest nicht als Renditeversprechen. Kurze Intraday-Historien, angenommene Gebühren, Ausführung und künftige Marktbedingungen können erheblich abweichen.",
+    multiCoinBacktest: "Mein Backtest mit echten Kosten",
+    backtestDisclaimer: "Ich behandle einen Backtest nicht als Renditeversprechen. Vier Jahre enthalten nur einige Dutzend Trades, und künftige Marktbedingungen können erheblich abweichen.",
     journal: "Journal",
     latestTrades: "Meine neuesten Trades",
     result: "Ergebnis",
     tradeStatus: "Status",
     noTrades: "Ich habe noch keine Trades.",
     safetyModel: "Mein Sicherheitsmodell",
-    portfolioBrakes: "Portfolioweite Bremsen",
-    allowAtMost: "Ich erlaube höchstens",
-    simultaneousPositions: "gleichzeitige Positionen",
-    newTradesPerDay: "neue Trades pro Tag",
-    closeDaily: "Ich schließe täglich jede offene Position",
+    portfolioBrakes: "So bleibe ich realistisch",
+    ruleSpot: "Nur Spot: kein Leerverkauf, kein Hebel, nie mehr als das vorhandene Guthaben",
+    ruleFees: "Gebühren auf jede Order und Preise aus dem echten Orderbuch",
+    ruleMinOrder: "Mindestordergrößen und Stückelung der Börse",
+    allowAtMost: "Ich halte höchstens",
+    simultaneousPositions: "Positionen gleichzeitig",
     noOrderEndpoints: "Ich enthalte keinen Order-, Konto- oder Transfer-Endpunkt",
     system: "System",
     eventLog: "Mein Ereignisprotokoll",
     noEvents: "Ich habe noch keine Ereignisse.",
-    resetTitle: "Meine Paper-Konten zurücksetzen",
-    resetCopy: "Ich lösche nur lokale Simulationen und starte erneut mit 1.000 €.",
+    resetTitle: "Mein Paper-Konto zurücksetzen",
+    resetCopy: "Ich lösche nur lokale Simulationen und starte erneut mit {capital}.",
     deleteData: "Paper-Daten löschen",
     loading: "Wird geladen …",
     offlineDemo: "Offline-Demo",
@@ -201,45 +201,41 @@ const translations = {
     simulationActive: "Simulation aktiv",
     safetyError: "Sicherheitsfehler",
     sourceDemo: "Ich starte sicher mit reproduzierbaren Demo-Daten. Für Fusion verwende ich ausschließlich einen API-Schlüssel mit Leseberechtigung.",
-    sourceFusion: "Ich verwende Fusion-Marktdaten und gebe den API-Schlüssel niemals an die WebUI weiter.",
+    sourceFusion: "Ich verwende Fusion-Marktdaten und das Orderbuch nur lesend und gebe den API-Schlüssel niemals an die WebUI weiter.",
     waiting: "wartet",
     noClosedCandle: "Ich habe noch keine abgeschlossene Kerze verarbeitet.",
-    longSetup: "Long-Signal",
-    shortSetup: "Short-Signal",
-    neutral: "Neutral",
-    uptrend: "Aufwärtstrend",
-    downtrend: "Abwärtstrend",
-    noTrend: "Kein bestätigter Trend",
-    locked: "GESPERRT",
-    dailyStop: "TAGESSTOPP",
-    cash: "Cash",
-    openCount: "{count} offen",
-    openPositions: "Offene Positionen",
-    tradesToday: "Trades heute",
-    openRisk: "Offenes Risiko",
-    effectiveLeverage: "Effektiver Hebel",
+    buySignal: "Kaufsignal",
+    sellSignal: "Verkaufssignal",
+    neutral: "Kein Signal",
+    breakoutAbove: "Kauf über {price} ({distance})",
+    exitUnder: "Verkauf unter {price}",
+    cash: "Guthaben",
+    invested: "Investiert",
+    openPositions: "Positionen",
+    feesPaid: "Gezahlte Gebühren",
+    drawdownNow: "Drawdown",
+    closedTrades: "Abgeschlossene Trades",
+    winRate: "Trefferquote",
     lastRun: "Letzter Lauf",
     updated: "Aktualisiert {time}",
-    long: "Long",
-    short: "Short",
     open: "Offen",
     closed: "Geschlossen",
-    backtestPeriod: "{from} bis {to} · {bars} Kerzen · {pairs} Paare",
+    backtestPeriod: "{from} bis {to} · {bars} Kerzen · {pairs} Paare · Gebühr {fee} je Order",
     totalReturn: "Gesamtrendite",
+    cagr: "Pro Jahr",
     maxDrawdown: "Max. Drawdown",
     trades: "Trades",
-    winRate: "Trefferquote",
-    dailyStops: "Tagesstopps",
-    maxPositions: "Max. Positionen",
-    backtestChartTitle: "Multi-Coin-Backtest",
-    equalWeightHold: "Gleichgewichtet halten",
+    timeInvested: "Zeit investiert",
+    backtestChartTitle: "Backtest-Kapitalverlauf",
+    equalWeightHold: "Kaufen und halten (gleichgewichtet)",
+    strategyName: "Trendfolge · Ausbruch {entry}/{exit}",
     unavailable: "Nicht verfügbar",
     scanning: "Ich führe den Scan aus …",
-    marketsProcessed: "{count} neue Märkte verarbeitet.",
+    marketsProcessed: "{count} neue Kerzen verarbeitet.",
     backtesting: "Ich führe den Backtest aus …",
-    backtestDone: "Ich habe den Multi-Coin-Backtest abgeschlossen.",
-    resetConfirm: "Möchte ich wirklich alle lokalen Multi-Coin-Paper-Trades und Kontostände löschen?",
-    resetDone: "Ich habe die Paper-Konten zurückgesetzt.",
+    backtestDone: "Ich habe den Backtest abgeschlossen.",
+    resetConfirm: "Möchte ich wirklich alle lokalen Paper-Trades und Kontostände löschen?",
+    resetDone: "Ich habe das Paper-Konto zurückgesetzt.",
     info: "Info",
     warning: "Warnung",
     error: "Fehler",
@@ -250,6 +246,7 @@ let euro;
 let preciseEuro;
 let microEuro;
 let number;
+let percent;
 
 function locale() {
   return state.language === "de" ? "de-DE" : "en-GB";
@@ -264,6 +261,7 @@ function resetFormatters() {
     style: "currency", currency: "EUR", minimumFractionDigits: 6, maximumFractionDigits: 6
   });
   number = new Intl.NumberFormat(locale(), { maximumFractionDigits: 2 });
+  percent = new Intl.NumberFormat(locale(), { style: "percent", maximumFractionDigits: 2 });
 }
 
 function t(key, values = {}) {
@@ -323,6 +321,11 @@ function formatMarketPrice(value) {
   return euro.format(amount);
 }
 
+function signedEuro(value) {
+  const amount = Number(value) || 0;
+  return (amount >= 0 ? "+" : "") + euro.format(amount);
+}
+
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
@@ -342,6 +345,12 @@ function formatTime(value) {
   return Number.isNaN(date.valueOf()) ? escapeHtml(value) : date.toLocaleString(locale());
 }
 
+function formatDate(value) {
+  if (!value) return "–";
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? escapeHtml(value) : date.toLocaleDateString(locale());
+}
+
 function toast(message, isError = false) {
   const element = document.getElementById("toast");
   element.textContent = message;
@@ -357,75 +366,43 @@ function setBusy(button, busy, busyKey) {
   button.disabled = busy;
 }
 
-function strategyLabel(strategyId, fallback) {
-  const labels = {
-    long_only_1x: {
-      en: "Long-only · 1×",
-      de: "Nur Long · 1×",
-    },
-    long_short_1x: {
-      en: "Long/Short · 1×",
-      de: "Long/Short · 1×",
-    },
-    long_short_2x: {
-      en: "Long/Short · max. 2×",
-      de: "Long/Short · max. 2×",
-    },
-  };
-  return labels[strategyId]?.[state.language] || fallback || strategyId;
-}
-
-function backtestLabel(item) {
-  if (item.strategy_id === "benchmark") return t("equalWeightHold");
-  if (item.strategy_id) return strategyLabel(item.strategy_id, item.label);
-  if (item.label === "Equal-weight hold" || item.label === "Gleichgewichtet halten") {
-    return t("equalWeightHold");
-  }
-  return item.label;
+function strategyName() {
+  const c = state.config || { entry_window: 55, exit_window: 20 };
+  return t("strategyName", { entry: c.entry_window, exit: c.exit_window });
 }
 
 function translateRuntimeText(value) {
   const text = String(value ?? "");
   if (state.language !== "de") return text;
   const exact = {
-    "I do not have enough indicator data yet": "Ich habe noch nicht genügend Indikatordaten.",
-    "Long setup": "Long-Signal",
-    "Short setup": "Short-Signal",
-    "Volume filter": "Volumenfilter",
-    "ADX trend-strength filter": "ADX-Trendstärkefilter",
-    "I found no fresh EMA crossover": "Ich habe keine neue EMA-Kreuzung gefunden.",
-    "I reset the multi-coin paper accounts.": "Ich habe die Multi-Coin-Paper-Konten zurückgesetzt.",
-    "I reset only the local multi-coin paper accounts.": "Ich habe nur die lokalen Multi-Coin-Paper-Konten zurückgesetzt.",
+    "I do not have enough candles yet": "Ich habe noch nicht genügend Kerzen.",
+    "Breakout above the entry channel": "Ausbruch über den Einstiegskanal",
+    "Close below the exit channel": "Schluss unter dem Ausstiegskanal",
+    "Inside the channel": "Innerhalb des Kanals",
+    "Exit channel broken": "Ausstiegskanal unterschritten",
+    "I reset the paper account.": "Ich habe das Paper-Konto zurückgesetzt.",
+    "I reset only the local paper account.": "Ich habe nur das lokale Paper-Konto zurückgesetzt.",
     "I am already running a paper cycle.": "Ich führe bereits einen Paper-Zyklus aus.",
-    "I have already processed every closed 15-minute candle.": "Ich habe bereits jede abgeschlossene 15-Minuten-Kerze verarbeitet.",
+    "I have already processed every closed candle.": "Ich habe bereits jede abgeschlossene Kerze verarbeitet.",
     "I received no market data for any configured pair.": "Ich habe für keines der konfigurierten Paare Marktdaten erhalten.",
-    "I activated the daily limit": "Ich habe das Tageslimit aktiviert.",
-    "I activated the emergency stop": "Ich habe den Not-Aus aktiviert.",
-    "I activated the 10% emergency stop and require a reset.": "Ich habe den 10-%-Not-Aus aktiviert und benötige einen Reset.",
-    "I reached the 10% total drawdown limit": "Ich habe das Gesamt-Drawdown-Limit von 10 % erreicht.",
     "Pair is not active on Bitpanda Fusion": "Das Paar ist auf Bitpanda Fusion nicht aktiv.",
-    "Stop-Loss": "Stop-Loss",
-    "Profit target": "Gewinnziel",
-    "Daily position close": "Täglicher Positionsschluss",
-    "EMA exit": "EMA-Ausstieg",
-    "Overnight emergency exit": "Notausstieg vor dem Tageswechsel",
   };
   if (exact[text]) return exact[text];
   let match = text.match(/^I do not have enough candles for (.+)\.$/);
   if (match) return "Ich habe noch nicht genügend Kerzen für " + match[1] + ".";
-  match = text.match(/^I activated the 2% daily limit on (.+)\.$/);
-  if (match) return "Ich habe am " + match[1] + " das Tageslimit von 2 % aktiviert.";
   match = text.match(/^I could not load market data for (.+): (.+)$/);
   if (match) return "Ich konnte die Marktdaten für " + match[1] + " nicht laden: " + match[2];
-  match = text.match(/^(.+) closed before the trading day$/);
-  if (match) return match[1] + " vor dem Handelstag geschlossen";
+  match = text.match(/^(\d+) new market candles processed: (.+)\.$/);
+  if (match) return match[1] + " neue Kerzen verarbeitet: " + match[2] + ".";
+  match = text.match(/^Paper buy (.+): ([\d.]+) EUR at ([\d.e+-]+) \(fee ([\d.]+) EUR, (order_book|candle)\)\.$/);
+  if (match) return "Paper-Kauf " + match[1] + ": " + match[2] + " EUR zu " + match[3] + " (Gebühr " + match[4] + " EUR, " + (match[5] === "order_book" ? "Orderbuch" : "Kerze") + ").";
+  match = text.match(/^Paper sell (.+): ([+-][\d.]+) EUR after fees \((order_book|candle)\)\.$/);
+  if (match) return "Paper-Verkauf " + match[1] + ": " + match[2] + " EUR nach Gebühren (" + (match[3] === "order_book" ? "Orderbuch" : "Kerze") + ").";
+  match = text.match(/^(.+) signal skipped: not enough cash for the minimum order\.$/);
+  if (match) return match[1] + ": Signal übersprungen, Guthaben reicht nicht für die Mindestorder.";
+  match = text.match(/^(.+) is skipped because it is not active\.$/);
+  if (match) return match[1] + " wird übersprungen, weil das Paar nicht aktiv ist.";
   return text;
-}
-
-function portfolioPosition(value) {
-  if (value === "Cash") return t("cash");
-  const match = String(value ?? "").match(/^(\d+) open$/);
-  return match ? t("openCount", { count: match[1] }) : translateRuntimeText(value);
 }
 
 function tradeStatus(value) {
@@ -439,17 +416,20 @@ function renderConfig() {
   const c = state.config;
   if (!c) return;
   document.getElementById("capital").textContent = euro.format(c.starting_capital);
-  document.getElementById("tradeRisk").textContent = number.format(c.risk_per_trade * 100) + " % · " + euro.format(c.risk_amount);
-  document.getElementById("aggregateRisk").textContent = number.format(c.max_aggregate_risk * 100) + " % · " + euro.format(c.aggregate_risk_amount);
-  document.getElementById("dailyRisk").textContent = number.format(c.max_daily_loss * 100) + " % · " + euro.format(c.daily_loss_amount);
-  document.getElementById("hardStop").textContent = number.format(c.hard_drawdown * 100) + " %";
+  document.getElementById("feeRate").textContent = percent.format(c.fee_rate);
+  document.getElementById("roundTrip").textContent = "≈ " + percent.format(c.round_trip_cost);
+  document.getElementById("positionSize").textContent = "1/" + c.pairs.length + " · " + percent.format(c.position_share);
+  document.getElementById("channels").textContent = c.entry_window + " / " + c.exit_window;
   document.getElementById("dataSource").textContent = c.data_source === "demo" ? t("offlineDemo") : t("fusion");
   document.getElementById("nextRun").textContent = t("everySeconds", { count: c.poll_seconds });
   document.getElementById("systemStatus").textContent = c.paper_only ? t("simulationActive") : t("safetyError");
   document.getElementById("maxPositions").textContent = c.max_open_positions;
-  document.getElementById("maxTrades").textContent = c.max_trades_per_day;
+  document.getElementById("intervalHint").textContent = t("intervalHint", {
+    interval: c.candle_interval, entry: c.entry_window, exit: c.exit_window,
+  });
   document.getElementById("pairChips").innerHTML = c.pairs.map((pair) => "<span>" + escapeHtml(pair) + "</span>").join("");
   document.getElementById("sourceHint").textContent = c.data_source === "demo" ? t("sourceDemo") : t("sourceFusion");
+  document.getElementById("resetCopy").textContent = t("resetCopy", { capital: euro.format(c.starting_capital) });
 }
 
 function renderMarkets() {
@@ -463,14 +443,15 @@ function renderMarkets() {
         "</strong><span>" + escapeHtml(t("waiting")) + "</span></div><p>" +
         escapeHtml(t("noClosedCandle")) + "</p></article>";
     }
-    const signal = item.signal > 0 ? t("longSetup") : item.signal < 0 ? t("shortSetup") : t("neutral");
-    const trend = item.trend > 0 ? t("uptrend") : item.trend < 0 ? t("downtrend") : t("noTrend");
+    const signal = item.signal > 0 ? t("buySignal") : item.signal < 0 ? t("sellSignal") : t("neutral");
     const signalClass = item.signal > 0 ? "positive" : item.signal < 0 ? "negative" : "muted";
+    const distance = item.price > 0 && item.entry_level > 0 ? (item.entry_level / item.price - 1) : 0;
     return "<article class=\"market-card\">" +
       "<div><strong>" + escapeHtml(pair) + "</strong><span class=\"" + signalClass + "\">" + escapeHtml(signal) + "</span></div>" +
       "<b>" + escapeHtml(formatMarketPrice(item.price)) + "</b>" +
-      "<p>" + escapeHtml(trend) + " · RSI " + escapeHtml(number.format(item.rsi)) + "</p>" +
-      "<small>" + escapeHtml(translateRuntimeText(item.reason)) + " · " + escapeHtml(formatTime(item.candle_time)) + "</small>" +
+      "<p>" + escapeHtml(t("breakoutAbove", { price: formatMarketPrice(item.entry_level), distance: (distance >= 0 ? "+" : "") + percent.format(distance) })) + "</p>" +
+      "<p>" + escapeHtml(t("exitUnder", { price: formatMarketPrice(item.exit_level) })) + "</p>" +
+      "<small>" + escapeHtml(translateRuntimeText(item.reason)) + " · " + escapeHtml(formatDate(item.candle_time)) + "</small>" +
       "</article>";
   }).join("");
 }
@@ -480,24 +461,21 @@ function renderPortfolios() {
   const portfolios = state.status.portfolios || [];
   document.getElementById("portfolioGrid").innerHTML = portfolios.map((item) => {
     const resultClass = item.pnl >= 0 ? "positive" : "negative";
-    const locked = Boolean(item.hard_locked);
-    const dayLocked = Boolean(item.daily_locked);
-    const badge = locked ? t("locked") : dayLocked ? t("dailyStop") : portfolioPosition(item.position);
-    const label = strategyLabel(item.strategy_id, item.label);
     return "<article class=\"portfolio-card\" style=\"--accent:" + escapeHtml(item.color) + "\">" +
-      "<div class=\"portfolio-top\"><strong>" + escapeHtml(label) + "</strong><span class=\"position-tag\">" + escapeHtml(badge) + "</span></div>" +
+      "<div class=\"portfolio-top\"><strong>" + escapeHtml(strategyName()) + "</strong><span class=\"position-tag\">" +
+      item.position_count + "/" + state.config.max_open_positions + "</span></div>" +
       "<div class=\"portfolio-value\">" + escapeHtml(euro.format(item.equity)) + "</div>" +
-      "<div class=\"portfolio-return " + resultClass + "\">" + (item.pnl >= 0 ? "+" : "") + escapeHtml(euro.format(item.pnl)) + " · " + escapeHtml(number.format(item.return_pct)) + " %</div>" +
+      "<div class=\"portfolio-return " + resultClass + "\">" + escapeHtml(signedEuro(item.pnl)) + " · " + escapeHtml(number.format(item.return_pct)) + " %</div>" +
       "<div class=\"portfolio-details\">" +
+        "<div><small>" + escapeHtml(t("cash")) + "</small><strong>" + escapeHtml(euro.format(item.cash)) + "</strong></div>" +
+        "<div><small>" + escapeHtml(t("invested")) + "</small><strong>" + escapeHtml(euro.format(item.exposure)) + "</strong></div>" +
+        "<div><small>" + escapeHtml(t("feesPaid")) + "</small><strong>" + escapeHtml(euro.format(item.fees_paid)) + "</strong></div>" +
+        "<div><small>" + escapeHtml(t("drawdownNow")) + "</small><strong>" + escapeHtml(number.format(item.drawdown_pct)) + " %</strong></div>" +
+        "<div><small>" + escapeHtml(t("closedTrades")) + "</small><strong>" + item.closed_trades + "</strong></div>" +
+        "<div><small>" + escapeHtml(t("winRate")) + "</small><strong>" + (item.win_rate_pct == null ? "–" : escapeHtml(number.format(item.win_rate_pct)) + " %") + "</strong></div>" +
         "<div><small>" + escapeHtml(t("openPositions")) + "</small><strong>" + item.position_count + "/" + state.config.max_open_positions + "</strong></div>" +
-        "<div><small>" + escapeHtml(t("tradesToday")) + "</small><strong>" + item.trades_today + "/" + state.config.max_trades_per_day + "</strong></div>" +
-        "<div><small>" + escapeHtml(t("notional")) + "</small><strong>" + escapeHtml(euro.format(item.notional)) + "</strong></div>" +
-        "<div><small>" + escapeHtml(t("openRisk")) + "</small><strong>" + escapeHtml(euro.format(item.open_risk)) + "</strong></div>" +
-        "<div><small>" + escapeHtml(t("effectiveLeverage")) + "</small><strong>" + escapeHtml(number.format(item.effective_leverage)) + "×</strong></div>" +
         "<div><small>" + escapeHtml(t("lastRun")) + "</small><strong>" + escapeHtml(formatTime(item.last_run_at)) + "</strong></div>" +
-      "</div>" +
-      (locked ? "<p class=\"negative\">" + escapeHtml(translateRuntimeText(item.lock_reason)) + "</p>" : "") +
-      "</article>";
+      "</div></article>";
   }).join("");
   const dated = portfolios.map((item) => item.last_run_at).filter(Boolean).sort();
   document.getElementById("lastUpdate").textContent = dated.length
@@ -508,35 +486,27 @@ function renderPortfolios() {
 function renderPositions() {
   if (!state.status) return;
   const positions = state.status.positions || [];
-  const labels = Object.fromEntries((state.status.portfolios || []).map((p) => [
-    p.strategy_id,
-    strategyLabel(p.strategy_id, p.label),
-  ]));
   document.getElementById("positionRows").innerHTML = positions.length ? positions.map((item) => {
     const pnlClass = item.unrealized_pnl >= 0 ? "positive" : "negative";
-    return "<tr><td>" + escapeHtml(labels[item.strategy_id] || item.strategy_id) +
-      "</td><td>" + escapeHtml(item.pair) +
-      "</td><td>" + escapeHtml(item.side === "long" ? t("long") : t("short")) +
+    return "<tr><td>" + escapeHtml(item.pair) +
+      "</td><td>" + escapeHtml(formatMarketPrice(item.entry_price)) +
+      "</td><td>" + escapeHtml(formatMarketPrice(item.last_price)) +
       "</td><td>" + escapeHtml(euro.format(item.notional)) +
-      "</td><td>" + escapeHtml(formatMarketPrice(item.stop_price)) +
-      "</td><td>" + escapeHtml(formatMarketPrice(item.take_profit)) +
-      "</td><td class=\"" + pnlClass + "\">" + escapeHtml(euro.format(item.unrealized_pnl)) + "</td></tr>";
+      "</td><td>" + escapeHtml(formatMarketPrice(item.exit_level)) +
+      "</td><td class=\"" + pnlClass + "\">" + escapeHtml(signedEuro(item.unrealized_pnl)) + " · " + escapeHtml(number.format(item.unrealized_pct)) + " %" +
+      "</td><td>" + escapeHtml(formatDate(item.opened_at)) + "</td></tr>";
   }).join("") : "<tr><td colspan=\"7\" class=\"muted\">" + escapeHtml(t("noOpenPosition")) + "</td></tr>";
 }
 
 function renderTrades() {
   if (!state.status) return;
   const rows = state.status.trades || [];
-  const labels = Object.fromEntries((state.status.portfolios || []).map((p) => [
-    p.strategy_id,
-    strategyLabel(p.strategy_id, p.label),
-  ]));
   document.getElementById("tradeRows").innerHTML = rows.length ? rows.slice(0, 16).map((trade) => {
-    const pnl = trade.pnl == null ? "–" : euro.format(trade.pnl);
+    const pnl = trade.pnl == null ? "–" : signedEuro(trade.pnl) + " · " + number.format(trade.pnl_pct * 100) + " %";
     const pnlClass = trade.pnl == null ? "" : trade.pnl >= 0 ? "positive" : "negative";
-    return "<tr><td>" + escapeHtml(labels[trade.strategy_id] || trade.strategy_id) +
-      "</td><td>" + escapeHtml(trade.pair) +
-      "</td><td>" + escapeHtml(trade.side === "long" ? t("long") : t("short")) +
+    return "<tr><td>" + escapeHtml(trade.pair) +
+      "</td><td>" + escapeHtml(formatMarketPrice(trade.entry_price)) + "<br /><small class=\"muted\">" + escapeHtml(formatDate(trade.opened_at)) + "</small>" +
+      "</td><td>" + (trade.exit_price == null ? "–" : escapeHtml(formatMarketPrice(trade.exit_price)) + "<br /><small class=\"muted\">" + escapeHtml(formatDate(trade.closed_at)) + "</small>") +
       "</td><td class=\"" + pnlClass + "\">" + escapeHtml(pnl) +
       "</td><td>" + escapeHtml(tradeStatus(trade.status)) + "</td></tr>";
   }).join("") : "<tr><td colspan=\"5\" class=\"muted\">" + escapeHtml(t("noTrades")) + "</td></tr>";
@@ -552,15 +522,20 @@ function renderEvents() {
   ).join("") : "<p class=\"muted\">" + escapeHtml(t("noEvents")) + "</p>";
 }
 
+function backtestLabel(item) {
+  return item.strategy_id === "benchmark" ? t("equalWeightHold") : strategyName();
+}
+
 function renderBacktest() {
   const result = state.backtest;
   if (!result || result.status !== "ok") return;
   document.getElementById("backtestSection").hidden = false;
   document.getElementById("backtestPeriod").textContent = t("backtestPeriod", {
-    from: formatTime(result.from),
-    to: formatTime(result.to),
+    from: formatDate(result.from),
+    to: formatDate(result.to),
     bars: result.bars,
     pairs: result.pairs.length,
+    fee: percent.format(result.fee_rate),
   });
   const cards = [...result.strategies, result.benchmark];
   document.getElementById("backtestGrid").innerHTML = cards.map((item) => {
@@ -569,11 +544,12 @@ function renderBacktest() {
       "<span>" + escapeHtml(backtestLabel(item)) + "</span><strong>" + escapeHtml(euro.format(item.final_equity)) + "</strong>" +
       "<div class=\"mini-stats\">" +
         "<div><span>" + escapeHtml(t("totalReturn")) + "</span><b class=\"" + returnClass + "\">" + escapeHtml(number.format(item.total_return_pct)) + " %</b></div>" +
+        "<div><span>" + escapeHtml(t("cagr")) + "</span><b class=\"" + returnClass + "\">" + escapeHtml(number.format(item.cagr_pct)) + " %</b></div>" +
         "<div><span>" + escapeHtml(t("maxDrawdown")) + "</span><b class=\"negative\">" + escapeHtml(number.format(item.max_drawdown_pct)) + " %</b></div>" +
         "<div><span>" + escapeHtml(t("trades")) + "</span><b>" + (item.trades ?? "–") + "</b></div>" +
         "<div><span>" + escapeHtml(t("winRate")) + "</span><b>" + (item.win_rate_pct == null ? "–" : escapeHtml(number.format(item.win_rate_pct)) + " %") + "</b></div>" +
-        "<div><span>" + escapeHtml(t("dailyStops")) + "</span><b>" + (item.daily_limit_hits ?? "–") + "</b></div>" +
-        "<div><span>" + escapeHtml(t("maxPositions")) + "</span><b>" + (item.max_positions ?? "–") + "</b></div>" +
+        "<div><span>" + escapeHtml(t("feesPaid")) + "</span><b>" + escapeHtml(euro.format(item.fees_paid)) + "</b></div>" +
+        "<div><span>" + escapeHtml(t("timeInvested")) + "</span><b>" + escapeHtml(number.format(item.time_invested_pct)) + " %</b></div>" +
       "</div></article>";
   }).join("");
   const series = cards.map((item) => ({
@@ -598,7 +574,7 @@ function drawChart(series) {
   const values = valid.flatMap((item) => item.points.map((point) => Number(point.equity))).filter(Number.isFinite);
   let min = Math.min(...values);
   let max = Math.max(...values);
-  const padding = Math.max((max - min) * 0.12, 5);
+  const padding = Math.max((max - min) * 0.12, 1);
   min -= padding;
   max += padding;
   const x0 = 62;
@@ -630,10 +606,10 @@ function drawChart(series) {
 
 function renderPaperChart() {
   if (!state.status) return;
-  const labels = Object.fromEntries((state.status.portfolios || []).map((p) => [p.strategy_id, p]));
+  const portfolios = Object.fromEntries((state.status.portfolios || []).map((p) => [p.strategy_id, p]));
   const series = Object.entries(state.status.curves || {}).map(([id, points]) => ({
-    label: strategyLabel(id, labels[id]?.label || id),
-    color: labels[id]?.color || "#fff",
+    label: strategyName(),
+    color: portfolios[id]?.color || "#59d3a5",
     points,
   }));
   document.getElementById("chartTitle").textContent = t("paperEquity");
@@ -705,7 +681,7 @@ document.getElementById("backtestButton").addEventListener("click", async (event
     state.backtest = await requestJson("/api/backtest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bars: Math.min(1000, state.config.backtest_bars) }),
+      body: JSON.stringify({ bars: Math.min(1440, state.config.backtest_bars) }),
     });
     renderBacktest();
     toast(t("backtestDone"));

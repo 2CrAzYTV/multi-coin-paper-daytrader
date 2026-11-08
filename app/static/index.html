@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>Multi-Coin Paper Daytrader</title>
+    <title>Multi-Coin Paper Trader</title>
     <link rel="icon" type="image/png" href="/static/app-icon.png" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
@@ -14,7 +14,7 @@
     <header class="topbar">
       <a class="brand" href="/">
         <span class="brand-mark">MC</span>
-        <span><strong>Multi-Coin Daytrader</strong><small data-i18n="edition">Paper · Unraid Edition</small></span>
+        <span><strong>Multi-Coin Trader</strong><small data-i18n="edition">Paper · Unraid Edition</small></span>
       </a>
       <div class="topbar-actions">
         <label class="language-control" for="languageSelect">
@@ -31,11 +31,12 @@
     <main>
       <section class="hero">
         <div>
-          <p class="eyebrow" data-i18n="eyebrow">Five markets. One shared risk budget.</p>
-          <h1 data-i18n-html="heroTitle">Crypto day trading.<br /><span>Without real money.</span></h1>
+          <p class="eyebrow" data-i18n="eyebrow">Spot only. Real fees. One strategy.</p>
+          <h1 data-i18n-html="heroTitle">Crypto trend following.<br /><span>Without real money.</span></h1>
           <p class="hero-copy" data-i18n="heroCopy">
-            I scan liquid EUR pairs for 15-minute signals and compare long-only,
-            long/short, and up to 2× leverage. I keep every execution simulated.
+            I check the most liquid EUR pairs once per daily candle. I buy a close above the
+            55-day high and sell a close below the 20-day low - long only, no leverage,
+            with Bitpanda Fusion fees and order-book prices.
           </p>
         </div>
         <div class="hero-panel">
@@ -56,12 +57,12 @@
         </p>
       </section>
 
-      <section class="risk-grid" data-i18n-aria="riskLimitsAria" aria-label="My risk limits">
-        <article class="metric"><span data-i18n="virtualCapital">Virtual capital</span><strong id="capital">–</strong><small data-i18n="perStrategy">per comparison strategy</small></article>
-        <article class="metric"><span data-i18n="riskPerTrade">Risk per trade</span><strong id="tradeRisk">–</strong><small data-i18n="portfolioWide">I calculate it portfolio-wide</small></article>
-        <article class="metric"><span data-i18n="aggregateRisk">Aggregate open risk</span><strong id="aggregateRisk">–</strong><small data-i18n="acrossCoins">across every coin</small></article>
-        <article class="metric"><span data-i18n="dailyLimit">Daily limit</span><strong id="dailyRisk">–</strong><small data-i18n="acrossTrades">across every trade</small></article>
-        <article class="metric"><span data-i18n="emergencyStop">Emergency stop</span><strong id="hardStop">–</strong><small data-i18n="untilReset">until I reset manually</small></article>
+      <section class="risk-grid" data-i18n-aria="riskLimitsAria" aria-label="My trading costs and rules">
+        <article class="metric"><span data-i18n="virtualCapital">Virtual capital</span><strong id="capital">–</strong><small data-i18n="oneAccount">one spot account</small></article>
+        <article class="metric"><span data-i18n="feePerOrder">Fee per order</span><strong id="feeRate">–</strong><small data-i18n="fusionTier">Fusion entry tier</small></article>
+        <article class="metric"><span data-i18n="roundTrip">Round-trip cost</span><strong id="roundTrip">–</strong><small data-i18n="feesAndSlippage">fees + slippage, buy and sell</small></article>
+        <article class="metric"><span data-i18n="positionSize">Position size</span><strong id="positionSize">–</strong><small data-i18n="ofEquity">of equity, min. exchange order</small></article>
+        <article class="metric"><span data-i18n="channels">Channels</span><strong id="channels">–</strong><small data-i18n="entryExit">entry high / exit low</small></article>
       </section>
 
       <section class="control-panel panel">
@@ -73,31 +74,31 @@
         </div>
         <div class="button-row">
           <button class="button primary" id="runButton" data-i18n="runScan">Run scan now</button>
-          <button class="button secondary" id="backtestButton" data-i18n="runBacktest">Run multi-coin backtest</button>
+          <button class="button secondary" id="backtestButton" data-i18n="runBacktest">Run 4-year backtest</button>
         </div>
       </section>
 
       <section class="section-block">
         <div class="section-heading">
           <div><p class="section-kicker" data-i18n="scanner">Scanner</p><h2 data-i18n="latestSignals">My latest market signals</h2></div>
-          <span class="muted" data-i18n="trendFilter">15 min · 1 h trend filter</span>
+          <span class="muted" id="intervalHint">–</span>
         </div>
         <div id="marketGrid" class="market-grid"></div>
       </section>
 
       <section class="section-block">
         <div class="section-heading">
-          <div><p class="section-kicker" data-i18n="liveSimulation">Live simulation</p><h2 data-i18n="paperPortfolios">My paper portfolios</h2></div>
+          <div><p class="section-kicker" data-i18n="liveSimulation">Live simulation</p><h2 data-i18n="paperPortfolios">My paper account</h2></div>
           <span class="muted" id="lastUpdate" data-i18n="notRun">I have not run a scan yet</span>
         </div>
-        <div id="portfolioGrid" class="portfolio-grid"></div>
+        <div id="portfolioGrid" class="portfolio-grid single"></div>
       </section>
 
       <section class="panel positions-panel">
         <div class="section-heading compact"><div><p class="section-kicker" data-i18n="exposure">Exposure</p><h2 data-i18n="openPositionsTitle">My open paper positions</h2></div></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th data-i18n="strategy">Strategy</th><th data-i18n="pair">Pair</th><th data-i18n="side">Side</th><th data-i18n="notional">Notional</th><th data-i18n="stop">Stop</th><th data-i18n="target">Target</th><th data-i18n="openPnl">Open P&amp;L</th></tr></thead>
+            <thead><tr><th data-i18n="pair">Pair</th><th data-i18n="entryPrice">Entry</th><th data-i18n="lastPrice">Last</th><th data-i18n="notional">Value</th><th data-i18n="exitBelow">Sell below</th><th data-i18n="openPnl">Open P&amp;L</th><th data-i18n="since">Since</th></tr></thead>
             <tbody id="positionRows"><tr><td colspan="7" class="muted" data-i18n="noOpenPosition">I have no open position.</td></tr></tbody>
           </table>
         </div>
@@ -114,13 +115,13 @@
 
       <section class="section-block" id="backtestSection" hidden>
         <div class="section-heading">
-          <div><p class="section-kicker" data-i18n="historicalSimulation">Historical simulation</p><h2 data-i18n="multiCoinBacktest">My multi-coin backtest</h2></div>
+          <div><p class="section-kicker" data-i18n="historicalSimulation">Historical simulation</p><h2 data-i18n="multiCoinBacktest">My backtest with real costs</h2></div>
           <span class="muted" id="backtestPeriod"></span>
         </div>
         <div id="backtestGrid" class="backtest-grid"></div>
         <p class="disclaimer" data-i18n="backtestDisclaimer">
-          I do not treat a backtest as a return promise. Short intraday history,
-          assumed fees, execution, and future market conditions can differ substantially.
+          I do not treat a backtest as a return promise. Four years contain only a few dozen trades,
+          and future market conditions can differ substantially.
         </p>
       </section>
 
@@ -129,18 +130,19 @@
           <div class="section-heading compact"><div><p class="section-kicker" data-i18n="journal">Journal</p><h2 data-i18n="latestTrades">My latest trades</h2></div></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th data-i18n="strategy">Strategy</th><th data-i18n="pair">Pair</th><th data-i18n="side">Side</th><th data-i18n="result">Result</th><th data-i18n="tradeStatus">Status</th></tr></thead>
+              <thead><tr><th data-i18n="pair">Pair</th><th data-i18n="entryPrice">Entry</th><th data-i18n="exitPrice">Exit</th><th data-i18n="result">Result</th><th data-i18n="tradeStatus">Status</th></tr></thead>
               <tbody id="tradeRows"><tr><td colspan="5" class="muted" data-i18n="noTrades">I have no trades yet.</td></tr></tbody>
             </table>
           </div>
         </section>
 
         <section class="panel">
-          <div class="section-heading compact"><div><p class="section-kicker" data-i18n="safetyModel">My safety model</p><h2 data-i18n="portfolioBrakes">Portfolio-wide brakes</h2></div></div>
+          <div class="section-heading compact"><div><p class="section-kicker" data-i18n="safetyModel">My safety model</p><h2 data-i18n="portfolioBrakes">How I stay realistic</h2></div></div>
           <ul class="guard-list">
-            <li><span data-i18n="allowAtMost">I allow at most</span> <strong id="maxPositions">–</strong> <span data-i18n="simultaneousPositions">simultaneous positions</span></li>
-            <li><span data-i18n="allowAtMost">I allow at most</span> <strong id="maxTrades">–</strong> <span data-i18n="newTradesPerDay">new trades per day</span></li>
-            <li data-i18n="closeDaily">I close every open position each day</li>
+            <li data-i18n="ruleSpot">Spot only: no short selling, no leverage, never more than the cash I hold</li>
+            <li data-i18n="ruleFees">Fees on every order and prices from the real order book</li>
+            <li data-i18n="ruleMinOrder">Exchange minimum order sizes and size increments</li>
+            <li><span data-i18n="allowAtMost">I hold at most</span> <strong id="maxPositions">–</strong> <span data-i18n="simultaneousPositions">positions at the same time</span></li>
             <li data-i18n="noOrderEndpoints">I include no order, account, or transfer endpoint</li>
           </ul>
         </section>
@@ -152,7 +154,7 @@
       </section>
 
       <section class="danger-zone">
-        <div><strong data-i18n="resetTitle">Reset my paper accounts</strong><p data-i18n="resetCopy">I delete only local simulations and start again with €1,000.</p></div>
+        <div><strong data-i18n="resetTitle">Reset my paper account</strong><p id="resetCopy">–</p></div>
         <button id="resetButton" class="button danger" data-i18n="deleteData">Delete paper data</button>
       </section>
     </main>

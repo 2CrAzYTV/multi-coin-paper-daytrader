@@ -7,25 +7,11 @@ from dataclasses import dataclass
 class StrategySpec:
     strategy_id: str
     label: str
-    short_allowed: bool
-    max_leverage: float
     color: str
 
 
-STRATEGIES = (
-    StrategySpec("long_only_1x", "Long-only · 1×", False, 1.0, "#59d3a5"),
-    StrategySpec("long_short_1x", "Long/Short · 1×", True, 1.0, "#66a7ff"),
-    StrategySpec("long_short_2x", "Long/Short · max. 2×", True, 2.0, "#f4b860"),
-)
-
-
-@dataclass(frozen=True)
-class PositionSize:
-    units: float
-    notional: float
-    risk_budget: float
-    estimated_stop_loss: float
-    effective_leverage: float
+STRATEGY = StrategySpec("trend_donchian", "Trend following · Donchian breakout", "#59d3a5")
+STRATEGIES = (STRATEGY,)
 
 
 @dataclass(frozen=True)
@@ -37,13 +23,26 @@ class PairConstraint:
 
 
 @dataclass(frozen=True)
+class Fill:
+    price: float
+    units: float
+    source: str  # "order_book" or "candle"
+
+
+@dataclass(frozen=True)
 class SignalSnapshot:
+    """Decision for the latest CLOSED candle of one pair.
+
+    ``direction``: 1 = close above the prior entry channel (buy signal),
+    -1 = close below the prior exit channel (sell signal), 0 = nothing.
+    """
+
     pair: str
     candle_time: str
     price: float
     atr: float
-    rsi: float
+    entry_level: float
+    exit_level: float
     direction: int
-    trend: int
     strength: float
     reason: str
